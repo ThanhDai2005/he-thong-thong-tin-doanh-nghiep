@@ -1,0 +1,41 @@
+node_modules/
+.env
+!.env.example
+jsconfig.json
+
+# REACT
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Claude & AI Agents tools (Chặn thư mục ẩn của AI)
+.claude/
+.codegraph/
+
+# Chặn toàn bộ các file báo cáo .md do AI tự sinh ở thư mục gốc
+*.md
+docs/
+
+# Giữ lại file hướng dẫn README.md của dự án (nếu có)
+!README.md
