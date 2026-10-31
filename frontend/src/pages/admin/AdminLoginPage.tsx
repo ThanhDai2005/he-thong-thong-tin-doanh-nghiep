@@ -2,6 +2,7 @@ import { LoginForm } from "@/components/auth/login-form";
 import { useAdminAuthStore } from "@/stores/useAdminAuthStore";
 import { useEffect } from "react";
 import { useNavigate } from "react-router";
+import { getRoleLandingPage } from "@/lib/roleRoutes";
 
 const AdminLoginPage = () => {
   const { user } = useAdminAuthStore();
@@ -9,7 +10,8 @@ const AdminLoginPage = () => {
 
   useEffect(() => {
     if (user) {
-      navigate("/admin/dashboard", { replace: true });
+      const landingPage = getRoleLandingPage(user.roleId?.title);
+      navigate(landingPage, { replace: true });
     }
   }, [user, navigate]);
 

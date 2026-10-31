@@ -1,17 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router";
-import { Search, Eye, Loader2, Calendar } from "lucide-react";
+import { Search, Loader2, Calendar } from "lucide-react";
 import { useAdminOrderStore } from "@/stores/useAdminOrderStore";
 import { useAdminAuthStore } from "@/stores/useAdminAuthStore";
-import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { hasPermission } from "@/lib/permissions";
 import AdminHeader from "@/components/admin/AdminHeader";
 import AdminPagination from "@/components/admin/AdminPagination";
 import NoPermissionScreen from "@/components/admin/NoPermissionScreen";
+import OrderDetailDrawer from "@/components/admin/OrderDetailDrawer";
 
 const OrderManagement = () => {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const searchTerm = searchParams.get("keyword") || "";
   const orderStatusFilter = searchParams.get("orderStatus") || "all";
@@ -22,6 +21,17 @@ const OrderManagement = () => {
   const limit = parseInt(searchParams.get("limit") || "10");
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [localKeyword, setLocalKeyword] = useState(searchTerm);
+
+  const [drawerOrderId, setDrawerOrderId] = useState<string | null>(null);
+  const [pinnedOrderId, setPinnedOrderId] = useState<string | null>(null);
+
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pinnedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    pinnedRef.current = pinnedOrderId;
+  }, [pinnedOrderId]);
 
   const { user } = useAdminAuthStore();
   const {
@@ -35,9 +45,64 @@ const OrderManagement = () => {
 
   const showSkeleton = loading && orders.length === 0;
   const showOverlay = loading && orders.length > 0;
-
   const canView = hasPermission(user, "orders_view");
   const canEdit = hasPermission(user, "orders_edit");
+
+  const clearTimers = () => {
+    if (openTimerRef.current) {
+      clearTimeout(openTimerRef.current);
+      openTimerRef.current = null;
+    }
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => clearTimers();
+  }, []);
+
+  // Chỉ mở / đổi order — KHÔNG đóng ở đây
+  const handleRowEnter = (orderId: string) => {
+    clearTimers();
+    // Đã ghim đơn khác → hover không đổi
+    if (pinnedRef.current && pinnedRef.current !== orderId) return;
+
+    openTimerRef.current = setTimeout(() => {
+      setDrawerOrderId(orderId);
+    }, 180);
+  };
+
+  // Rời CẢ khối (bảng + panel) mới đóng
+  const handleMasterLeave = () => {
+    if (pinnedRef.current) return;
+    clearTimers();
+    closeTimerRef.current = setTimeout(() => {
+      if (!pinnedRef.current) setDrawerOrderId(null);
+    }, 280);
+  };
+
+  const handleMasterEnter = () => {
+    clearTimers();
+  };
+
+  const handleRowClick = (orderId: string) => {
+    clearTimers();
+    if (pinnedOrderId === orderId) {
+      setPinnedOrderId(null);
+      setDrawerOrderId(orderId);
+    } else {
+      setPinnedOrderId(orderId);
+      setDrawerOrderId(orderId);
+    }
+  };
+
+  const handleCloseDrawer = () => {
+    clearTimers();
+    setPinnedOrderId(null);
+    setDrawerOrderId(null);
+  };
 
   const updateURL = (newParams: Record<string, string>) => {
     const params = Object.fromEntries(searchParams.entries());
@@ -113,16 +178,14 @@ const OrderManagement = () => {
     });
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("vi-VN", {
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString("vi-VN", {
       month: "2-digit",
       day: "2-digit",
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
 
   // ================= CẤU HÌNH TRẠNG THÁI =================
   const orderStatusConfig = {
@@ -166,15 +229,13 @@ const OrderManagement = () => {
   // ================= PAYMENT BADGE =================
   const getPaymentBadge = (status: string, method: string) => {
     const isPaid = status === "Paid";
-    const bg = isPaid ? "bg-[#d1fae5]" : "bg-[#fef3c7]";
-    const text = isPaid ? "text-[#15803d]" : "text-[#92400e]";
-    const label = isPaid ? "Đã thanh toán" : "Chưa thanh toán";
-
     return (
       <span
-        className={`inline-flex items-center px-2.5 py-1 rounded-md text-[12px] font-bold ${bg} ${text}`}
+        className={`inline-flex items-center px-2.5 py-1 rounded-md text-[12px] font-bold ${isPaid ? "bg-[#d1fae5] text-[#15803d]" : "bg-[#fef3c7] text-[#92400e]"
+          }`}
       >
-        {label} <span className="ml-1 opacity-70">({method})</span>
+        {isPaid ? "Đã thanh toán" : "Chưa thanh toán"}{" "}
+        <span className="ml-1 opacity-70">({method})</span>
       </span>
     );
   };
@@ -185,7 +246,6 @@ const OrderManagement = () => {
     newStatus: string,
     currentStatus: string,
   ) => {
-    // Nếu chọn lại trạng thái hiện tại, không làm gì
     if (newStatus === currentStatus) {
       return;
     }
@@ -217,6 +277,8 @@ const OrderManagement = () => {
       />
     );
   }
+
+  const panelOpen = Boolean(drawerOrderId);
 
   return (
     <div className="bg-[#f7f9fb] min-h-screen pb-12">
@@ -304,6 +366,7 @@ const OrderManagement = () => {
                 />
               </div>
               <button
+                type="button"
                 onClick={handleClearFilters}
                 className="px-4 py-1.5 text-sm font-bold text-[#b51c00] bg-red-50 hover:bg-red-100 rounded-md transition-colors ml-auto"
               >
@@ -313,195 +376,177 @@ const OrderManagement = () => {
           </div>
         </div>
 
-        {/* ================= BẢNG DỮ LIỆU ================= */}
-        <div className="bg-white rounded-[12px] shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="text-[18px] font-bold text-gray-900">
-              Danh sách đơn hàng
-            </h2>
-          </div>
+        {/* MASTER: bảng + panel — leave CHỈ gắn ở đây */}
+        <div
+          className="flex gap-4 items-start"
+          onMouseEnter={handleMasterEnter}
+          onMouseLeave={handleMasterLeave}
+        >
+          <div
+            className={`bg-white rounded-[12px] shadow-sm border border-gray-200 overflow-hidden min-w-0 transition-all duration-200 ${panelOpen ? "flex-1" : "w-full"
+              }`}
+          >
+            <div className="px-6 py-4 border-b border-gray-100">
+              <h2 className="text-[18px] font-bold text-gray-900">
+                Danh sách đơn hàng
+              </h2>
+            </div>
 
-          <div className="w-full relative">
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs text-gray-500 bg-gray-50 uppercase font-bold border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-4">Mã đơn</th>
-                  <th className="px-6 py-4">Khách hàng</th>
-                  <th className="px-6 py-4">Thanh toán (Phương thức)</th>
-                  <th className="px-6 py-4">Tổng tiền</th>
-                  <th className="px-6 py-4">Người cập nhật</th>
-                  <th className="px-6 py-4">Ngày đặt</th>
-                  <th className="px-6 py-4 text-center">Trạng thái đơn</th>
-                  <th className="px-6 py-4 text-center">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {showSkeleton ? (
-                  // Skeleton rows on first load
-                  Array.from({ length: limit }).map((_, index) => (
-                    <tr key={index} className="animate-pulse bg-white">
-                      <td className="px-6 py-4">
-                        <div className="h-4 bg-gray-200 rounded w-20"></div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="h-4 bg-gray-200 rounded w-32"></div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="h-6 bg-gray-200 rounded-md w-36"></div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="h-4 bg-gray-200 rounded w-24"></div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="h-4 bg-gray-200 rounded w-28"></div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="h-4 bg-gray-200 rounded w-28"></div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="h-7 bg-gray-200 rounded-md w-full"></div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="h-8 bg-gray-200 rounded-lg w-8 mx-auto"></div>
-                      </td>
-                    </tr>
-                  ))
-                ) : orders.length > 0 ? (
-                  orders.map((order) => {
-                    const statusConfig = orderStatusConfig[order.orderStatus];
-
-                    if (!statusConfig) {
-                      return null;
-                    }
-
-                    const isUpdating = updatingOrderId === order._id;
-                    const isEndState = statusConfig.next.length === 0;
-
-                    return (
-                      <tr
-                        key={order._id}
-                        className="bg-white hover:bg-gray-50 transition-colors"
-                      >
-                        <td className="px-6 py-4 font-mono text-[#b51c00] font-semibold">
-                          #{order._id.slice(-8).toUpperCase()}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="font-semibold text-gray-900">
-                            {order.shippingAddress.recipient}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          {getPaymentBadge(
-                            order.paymentStatus,
-                            order.paymentMethod,
-                          )}
-                        </td>
-                        <td className="px-6 py-4 font-bold text-gray-900">
-                          {order.totalAmount.toLocaleString("vi-VN")}₫
-                        </td>
-                        <td className="px-6 py-4 text-gray-500 font-medium">
-                          {order.updatedBy?.userId?.displayName || "—"}
-                        </td>
-                        <td className="px-6 py-4 text-gray-500 font-medium">
-                          {formatDate(order.createdAt)}
-                        </td>
-
-                        <td className="px-6 py-4 text-center">
-                          {isUpdating ? (
-                            <div className="flex items-center justify-center gap-2 text-gray-400 font-bold text-xs py-1.5">
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              Đang lưu...
-                            </div>
-                          ) : canEdit ? (
-                            <select
-                              value={order.orderStatus}
-                              onChange={(e) =>
-                                handleQuickStatusUpdate(
-                                  order._id,
-                                  e.target.value,
-                                  order.orderStatus,
-                                )
-                              }
-                              disabled={isEndState}
-                              className={`w-full px-3 py-1.5 rounded-md border text-xs font-bold transition-all outline-none
-                                  ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border}
-                                  ${
-                                    isEndState
-                                      ? "opacity-75 cursor-not-allowed"
-                                      : "cursor-pointer hover:brightness-95 focus:ring-2 focus:ring-[#b51c00]/30"
-                                  }`}
-                            >
-                              {/* Current status as first option */}
-                              <option value={order.orderStatus}>
-                                {statusConfig.label}
-                              </option>
-                              {/* Next valid statuses */}
-                              {statusConfig.next.map((nextStatus) => (
-                                <option key={nextStatus} value={nextStatus}>
-                                  {orderStatusConfig[nextStatus].label}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <span
-                              className={`inline-flex items-center px-3 py-1.5 rounded-md border text-xs font-bold ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border}`}
-                            >
-                              {statusConfig.label}
-                            </span>
-                          )}
-                        </td>
-
-                        <td className="px-6 py-4 text-center">
-                          <button
-                            onClick={() =>
-                              navigate(`/admin/order/${order._id}`)
-                            }
-                            className="w-8 h-8 mx-auto flex items-center justify-center bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-colors"
-                            title="Xem chi tiết"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
+            <div className="w-full relative overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs text-gray-500 bg-gray-50 uppercase font-bold border-b border-gray-200">
+                  <tr>
+                    <th className="px-4 py-4 whitespace-nowrap">Mã đơn</th>
+                    <th className="px-4 py-4">Khách hàng</th>
+                    {!panelOpen && <th className="px-4 py-4">Thanh toán</th>}
+                    <th className="px-4 py-4">Tổng tiền</th>
+                    {!panelOpen && (
+                      <th className="px-4 py-4 hidden lg:table-cell">
+                        Người cập nhật
+                      </th>
+                    )}
+                    <th className="px-4 py-4 whitespace-nowrap">Ngày đặt</th>
+                    <th className="px-4 py-4 text-center">Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {showSkeleton ? (
+                    Array.from({ length: limit }).map((_, index) => (
+                      <tr key={index} className="animate-pulse">
+                        <td colSpan={panelOpen ? 5 : 7} className="px-4 py-4">
+                          <div className="h-4 bg-gray-200 rounded w-full" />
                         </td>
                       </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td
-                      colSpan={8}
-                      className="px-6 py-16 text-center text-gray-500 font-medium"
-                    >
-                      Không tìm thấy đơn hàng nào phù hợp với bộ lọc.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                    ))
+                  ) : orders.length > 0 ? (
+                    orders.map((order) => {
+                      const statusConfig = orderStatusConfig[order.orderStatus];
+                      if (!statusConfig) return null;
+                      const isUpdating = updatingOrderId === order._id;
+                      const isEndState = statusConfig.next.length === 0;
+                      const isActive = drawerOrderId === order._id;
 
-            {/* Overlay spinner for subsequent loads */}
-            {showOverlay && (
-              <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center z-10 rounded-lg">
-                <div className="flex flex-col items-center gap-2">
+                      return (
+                        <tr
+                          key={order._id}
+                          className={`transition-colors cursor-pointer ${isActive
+                            ? "bg-[#fef2f2] ring-1 ring-inset ring-[#b51c00]/20"
+                            : "bg-white hover:bg-gray-50"
+                            }`}
+                          onMouseEnter={() => handleRowEnter(order._id)}
+                          onClick={() => handleRowClick(order._id)}
+                        >
+                          <td className="px-4 py-3 font-mono text-[#b51c00] font-semibold whitespace-nowrap">
+                            #{order._id.slice(-8).toUpperCase()}
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-gray-900">
+                            {order.shippingAddress?.recipient}
+                          </td>
+                          {!panelOpen && (
+                            <td className="px-4 py-3">
+                              {getPaymentBadge(
+                                order.paymentStatus,
+                                order.paymentMethod,
+                              )}
+                            </td>
+                          )}
+                          <td className="px-4 py-3 font-bold text-gray-900 whitespace-nowrap">
+                            {order.totalAmount.toLocaleString("vi-VN")}₫
+                          </td>
+                          {!panelOpen && (
+                            <td className="px-4 py-3 text-gray-500 hidden lg:table-cell">
+                              {order.updatedBy?.userId?.displayName || "—"}
+                            </td>
+                          )}
+                          <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                            {formatDate(order.createdAt)}
+                          </td>
+                          <td
+                            className="px-4 py-3 text-center"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {isUpdating ? (
+                              <div className="flex items-center justify-center">
+                                <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />
+                              </div>
+                            ) : canEdit ? (
+                              <select
+                                value={order.orderStatus}
+                                onChange={(e) =>
+                                  handleQuickStatusUpdate(
+                                    order._id,
+                                    e.target.value,
+                                    order.orderStatus,
+                                  )
+                                }
+                                disabled={isEndState}
+                                className={`w-full min-w-[110px] px-2 py-1.5 rounded-md border text-xs font-bold outline-none ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border} ${isEndState
+                                  ? "opacity-75 cursor-not-allowed"
+                                  : "cursor-pointer"
+                                  }`}
+                              >
+                                <option value={order.orderStatus}>
+                                  {statusConfig.label}
+                                </option>
+                                {statusConfig.next.map((n) => (
+                                  <option key={n} value={n}>
+                                    {orderStatusConfig[n].label}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span
+                                className={`inline-flex px-2 py-1 rounded-md border text-xs font-bold ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border}`}
+                              >
+                                {statusConfig.label}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan={panelOpen ? 5 : 7}
+                        className="px-6 py-16 text-center text-gray-500"
+                      >
+                        Không tìm thấy đơn hàng nào phù hợp với bộ lọc.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+
+              {showOverlay && (
+                <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-10">
                   <Loader2 className="w-7 h-7 animate-spin text-[#b51c00]" />
-                  <span className="text-sm font-semibold text-gray-600">
-                    Đang tải...
-                  </span>
                 </div>
-              </div>
+              )}
+            </div>
+
+            {orders.length > 0 && (
+              <AdminPagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                limit={limit}
+                onPageChange={(page) => updateURL({ page: page.toString() })}
+                onLimitChange={(newLimit) =>
+                  updateURL({ limit: newLimit.toString(), page: "1" })
+                }
+              />
             )}
           </div>
 
-          {/* ================= PAGINATION ================= */}
-          {orders.length > 0 && (
-            <AdminPagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              limit={limit}
-              onPageChange={(page) => updateURL({ page: page.toString() })}
-              onLimitChange={(newLimit) =>
-                updateURL({ limit: newLimit.toString(), page: "1" })
-              }
-            />
+          {panelOpen && drawerOrderId && (
+            <div className="w-[380px] xl:w-[400px] shrink-0 sticky top-4 self-start">
+              <OrderDetailDrawer
+                orderId={drawerOrderId}
+                isPinned={pinnedOrderId === drawerOrderId}
+                onClose={handleCloseDrawer}
+                onUpdated={refetchOrders}
+              />
+            </div>
           )}
         </div>
       </div>

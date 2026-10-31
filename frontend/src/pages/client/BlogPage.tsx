@@ -95,11 +95,10 @@ const BlogPage = () => {
           <div className="flex gap-3 mb-8 overflow-x-auto pb-4 snap-x scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden justify-start md:justify-center">
             <button
               onClick={() => setSelectedCategorySlug("")}
-              className={`flex-none snap-start px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 active:scale-95 ${
-                selectedCategorySlug === ""
+              className={`flex-none snap-start px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 active:scale-95 ${selectedCategorySlug === ""
                   ? "bg-[#b51c00] text-white shadow-md shadow-red-900/20"
                   : "bg-white text-gray-700 hover:bg-gray-100 hover:text-[#b51c00] border border-gray-200"
-              }`}
+                }`}
             >
               Tất Cả Bài Viết
             </button>
@@ -107,11 +106,10 @@ const BlogPage = () => {
               <button
                 key={category._id}
                 onClick={() => setSelectedCategorySlug(category.slug)}
-                className={`flex-none snap-start px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 active:scale-95 ${
-                  selectedCategorySlug === category.slug
+                className={`flex-none snap-start px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 active:scale-95 ${selectedCategorySlug === category.slug
                     ? "bg-[#b51c00] text-white shadow-md shadow-red-900/20"
                     : "bg-white text-gray-700 hover:bg-gray-100 hover:text-[#b51c00] border border-gray-200"
-                }`}
+                  }`}
               >
                 {category.name}
               </button>
@@ -189,7 +187,7 @@ const BlogPage = () => {
                           person
                         </span>
                         <span>
-                          {featuredPost.authorId?.displayName || "Ban Biên Tập"}
+                          {featuredPost.authorId?.userId?.displayName || "Ban Biên Tập"}
                         </span>
                         <span>•</span>
                         <span>
@@ -236,7 +234,7 @@ const BlogPage = () => {
                               </span>
                             </div>
                             <span className="truncate max-w-[120px]">
-                              {post.authorId?.displayName}
+                              {post.authorId?.userId?.displayName || "Ban Biên Tập"}
                             </span>
                           </div>
                           <span className="text-gray-400">

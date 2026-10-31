@@ -112,7 +112,7 @@ const BlogDetailPage = () => {
                 </div>
                 <div>
                   <p className="text-gray-900 font-bold">
-                    {currentBlog.authorId?.displayName}
+                    {currentBlog.authorId?.userId?.displayName || "Ban Biên Tập"}
                   </p>
                   <p className="text-xs text-gray-500">
                     {new Date(currentBlog.publishedAt).toLocaleDateString(

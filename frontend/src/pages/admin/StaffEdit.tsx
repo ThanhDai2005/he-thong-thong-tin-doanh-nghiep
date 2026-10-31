@@ -92,10 +92,7 @@ const StaffEdit = () => {
         email: currentStaff.email || "",
         phone: currentStaff.phone || "",
         password: "",
-        roleId:
-          typeof currentStaff.roleId === "object"
-            ? currentStaff.roleId._id
-            : "",
+        roleId: currentStaff?.roleId?._id,
         status: currentStaff.status || "active",
       });
     }
@@ -332,18 +329,14 @@ const StaffEdit = () => {
                     id="roleId"
                     {...register("roleId")}
                     disabled={
-                      !canEdit ||
-                      (typeof currentStaff?.roleId === "object" &&
-                        currentStaff?.roleId?.title === "Super Admin")
+                      !canEdit || currentStaff?.roleId?.title === "Super Admin"
                     }
                     className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all cursor-pointer ${
                       errors.roleId
                         ? "border-red-300 focus:ring-red-500/20 focus:border-red-500"
                         : "border-gray-200 focus:ring-[#b51c00]/20 focus:border-[#b51c00]"
                     } ${
-                      !canEdit ||
-                      (typeof currentStaff?.roleId === "object" &&
-                        currentStaff?.roleId?.title === "Super Admin")
+                      !canEdit || currentStaff?.roleId?.title === "Super Admin"
                         ? "bg-gray-50 cursor-not-allowed"
                         : ""
                     }`}
@@ -355,13 +348,12 @@ const StaffEdit = () => {
                       </option>
                     ))}
                   </select>
-                  {typeof currentStaff?.roleId === "object" &&
-                    currentStaff?.roleId?.title === "Super Admin" && (
-                      <p className="mt-1.5 text-xs text-amber-600 flex items-center gap-1">
-                        <span className="w-1 h-1 bg-amber-600 rounded-full"></span>
-                        Không thể thay đổi vai trò Super Admin
-                      </p>
-                    )}
+                  {currentStaff?.roleId?.title === "Super Admin" && (
+                    <p className="mt-1.5 text-xs text-amber-600 flex items-center gap-1">
+                      <span className="w-1 h-1 bg-amber-600 rounded-full"></span>
+                      Không thể thay đổi vai trò Super Admin
+                    </p>
+                  )}
                   {errors.roleId && (
                     <p className="mt-1.5 text-xs text-red-600 flex items-center gap-1">
                       <span className="w-1 h-1 bg-red-600 rounded-full"></span>
@@ -382,14 +374,10 @@ const StaffEdit = () => {
                     id="status"
                     {...register("status")}
                     disabled={
-                      !canEdit ||
-                      (typeof currentStaff?.roleId === "object" &&
-                        currentStaff?.roleId?.title === "Super Admin")
+                      !canEdit || currentStaff?.roleId?.title === "Super Admin"
                     }
                     className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#b51c00]/20 focus:border-[#b51c00] transition-all cursor-pointer ${
-                      !canEdit ||
-                      (typeof currentStaff?.roleId === "object" &&
-                        currentStaff?.roleId?.title === "Super Admin")
+                      !canEdit || currentStaff?.roleId?.title === "Super Admin"
                         ? "bg-gray-50 cursor-not-allowed"
                         : ""
                     }`}
@@ -397,13 +385,12 @@ const StaffEdit = () => {
                     <option value="active">Hoạt động</option>
                     <option value="inactive">Khóa</option>
                   </select>
-                  {typeof currentStaff?.roleId === "object" &&
-                    currentStaff?.roleId?.title === "Super Admin" && (
-                      <p className="mt-1.5 text-xs text-amber-600 flex items-center gap-1">
-                        <span className="w-1 h-1 bg-amber-600 rounded-full"></span>
-                        Không thể thay đổi trạng thái Super Admin
-                      </p>
-                    )}
+                  {currentStaff?.roleId?.title === "Super Admin" && (
+                    <p className="mt-1.5 text-xs text-amber-600 flex items-center gap-1">
+                      <span className="w-1 h-1 bg-amber-600 rounded-full"></span>
+                      Không thể thay đổi trạng thái Super Admin
+                    </p>
+                  )}
                 </div>
 
                 {/* Submit Button */}

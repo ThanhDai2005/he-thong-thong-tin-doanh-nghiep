@@ -37,7 +37,6 @@ import StaffManagement from "@/pages/admin/StaffManagement";
 import StaffCreate from "@/pages/admin/StaffCreate";
 import StaffEdit from "@/pages/admin/StaffEdit";
 import OrderManagement from "@/pages/admin/OrderManagement";
-import OrderDetail from "@/pages/admin/OrderDetail";
 import PermissionManagement from "@/pages/admin/PermissionManagement";
 import RoleManagement from "@/pages/admin/RoleManagement";
 import RoleEdit from "@/pages/admin/RoleEdit";
@@ -210,10 +209,6 @@ const adminRoute = {
             {
               path: "orders",
               element: <OrderManagement />,
-            },
-            {
-              path: "order/:orderId",
-              element: <OrderDetail />,
             },
             {
               path: "permissions",

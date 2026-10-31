@@ -40,7 +40,14 @@ export const list = async (req, res) => {
 
     const [data, totalItems] = await Promise.all([
       Blog.find(filter)
-        .populate("authorId", "displayName")
+        .populate({
+          path: "authorId",
+          select: "userId",
+          populate: {
+            path: "userId",
+            select: "displayName avatarUrl",
+          },
+        })
         .populate("blogCategoryId", "name slug")
         .populate("relatedProducts", "name slug price images stock averageRating")
         .sort({ publishedAt: -1, createdAt: -1 })
@@ -96,7 +103,14 @@ export const detail = async (req, res) => {
       status: "active",
       deleted: false,
     })
-      .populate("authorId", "displayName avatarUrl")
+      .populate({
+        path: "authorId",
+        select: "userId",
+        populate: {
+          path: "userId",
+          select: "displayName avatarUrl",
+        },
+      })
       .populate("blogCategoryId", "name slug")
       .populate("relatedProducts")
       .lean();

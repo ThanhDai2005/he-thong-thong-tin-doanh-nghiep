@@ -1,12 +1,14 @@
 import { useAdminAuthStore } from "@/stores/useAdminAuthStore";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Navigate, Outlet } from "react-router";
+import { Navigate, Outlet, useLocation } from "react-router";
+import { getRoleLandingPage } from "@/lib/roleRoutes";
 
 const AdminRouter = () => {
   const { accessToken, user, loading, getDetail, refreshToken } =
     useAdminAuthStore();
   const [starting, setStarting] = useState(true);
+  const location = useLocation();
 
   const init = async () => {
     if (!accessToken) {
@@ -45,6 +47,15 @@ const AdminRouter = () => {
 
   if (!user) {
     return <Navigate to="/admin/login" />;
+  }
+
+  // Redirect về landing page phù hợp nếu user đang ở root /admin/dashboard mà không phải Super Admin
+  if (
+    location.pathname === "/admin/dashboard" &&
+    user.roleId?.title !== "Super Admin"
+  ) {
+    const landingPage = getRoleLandingPage(user.roleId?.title);
+    return <Navigate to={landingPage} replace />;
   }
 
   return (

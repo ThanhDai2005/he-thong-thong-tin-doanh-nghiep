@@ -133,7 +133,7 @@ const CartPage = () => {
   };
 
   const handleApplyPromo = async (codeOverride?: string) => {
-    const code = typeof codeOverride === "string" ? codeOverride : promoCode;
+    const code = codeOverride || promoCode;
 
     if (!code?.trim()) {
       toast.error("Vui lòng nhập mã khuyến mãi");
