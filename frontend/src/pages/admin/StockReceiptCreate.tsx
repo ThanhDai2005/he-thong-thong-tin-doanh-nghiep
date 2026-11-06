@@ -18,7 +18,7 @@ import { useAdminAuthStore } from "@/stores/useAdminAuthStore";
 import { useAdminStockReceiptStore } from "@/stores/useAdminStockReceiptStore";
 import { useAdminSupplierStore } from "@/stores/useAdminSupplierStore";
 import { hasPermission } from "@/lib/permissions";
-import adminApi from "@/lib/adminAxios";
+import api from "@/lib/adminAxios";
 
 interface ProductOption {
   _id: string;
@@ -90,7 +90,7 @@ const StockReceiptCreate = () => {
     }
     try {
       setSearchLoading((prev) => ({ ...prev, [lineId]: true }));
-      const res = await adminApi.get(
+      const res = await api.get(
         `/admin/product?keyword=${encodeURIComponent(keyword)}&limit=10&page=1`,
       );
       setProductResults((prev) => ({

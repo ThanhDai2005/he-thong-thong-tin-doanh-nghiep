@@ -1,20 +1,20 @@
-import adminApi from "@/lib/adminAxios";
+import api from "@/lib/adminAxios";
 
 export const adminCategoryService = {
   getList: async (keyword = "", status = "", page = 1, limit = 10) => {
-    const response = await adminApi.get(
+    const response = await api.get(
       `/admin/category?keyword=${keyword}&status=${status}&page=${page}&limit=${limit}`,
     );
     return response.data;
   },
 
   getDetail: async (categoryId: string) => {
-    const response = await adminApi.get(`/admin/category/${categoryId}`);
+    const response = await api.get(`/admin/category/${categoryId}`);
     return response.data;
   },
 
   create: async (data: { name: string; status?: string }) => {
-    const response = await adminApi.post("/admin/category", data);
+    const response = await api.post("/admin/category", data);
     return response.data;
   },
 
@@ -22,7 +22,7 @@ export const adminCategoryService = {
     categoryId: string,
     data: { name?: string; status?: string },
   ) => {
-    const response = await adminApi.patch(
+    const response = await api.patch(
       `/admin/category/update/${categoryId}`,
       data,
     );
@@ -30,7 +30,7 @@ export const adminCategoryService = {
   },
 
   changeStatus: async (categoryId: string, status: "active" | "inactive") => {
-    const response = await adminApi.patch(
+    const response = await api.patch(
       `/admin/category/change-status/${status}/${categoryId}`,
     );
     return response.data;
@@ -40,7 +40,7 @@ export const adminCategoryService = {
     ids: string[],
     type: "active" | "inactive" | "delete-all",
   ) => {
-    const response = await adminApi.patch("/admin/category/change-multi", {
+    const response = await api.patch("/admin/category/change-multi", {
       ids,
       type,
     });
@@ -48,7 +48,7 @@ export const adminCategoryService = {
   },
 
   deleteItem: async (categoryId: string) => {
-    const response = await adminApi.patch(`/admin/category/delete/${categoryId}`);
+    const response = await api.patch(`/admin/category/delete/${categoryId}`);
     return response.data;
   },
 };

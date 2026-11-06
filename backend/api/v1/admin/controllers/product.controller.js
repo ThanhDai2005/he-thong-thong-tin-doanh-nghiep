@@ -2,6 +2,7 @@ import Product from "../../../../models/product.model.js";
 import Category from "../../../../models/category.model.js";
 import slugify from "slugify";
 import logger from "../../../../config/logger.js";
+import { invalidateCacheByPattern } from "../../../../helpers/searchCache.helper.js";
 
 // [GET] /api/v1/admin/product
 export const list = async (req, res) => {
@@ -176,6 +177,9 @@ export const create = async (req, res) => {
       status: status || "active",
     });
 
+    // ✅ Xóa cache ALL_ACTIVE_PRODUCTS để client load lại danh sách mới
+    invalidateCacheByPattern("ALL_ACTIVE_PRODUCTS");
+
     res.status(201).json({
       message: "Tạo product thành công",
       data: createdProduct,
@@ -282,6 +286,9 @@ export const update = async (req, res) => {
       { new: true },
     );
 
+    // ✅ Xóa cache ALL_ACTIVE_PRODUCTS để client load lại danh sách mới
+    invalidateCacheByPattern("ALL_ACTIVE_PRODUCTS");
+
     res.status(200).json({
       message: "Cập nhật product thành công",
       data: updatedProduct,
@@ -324,6 +331,9 @@ export const changeStatus = async (req, res) => {
 
     await Product.updateOne({ _id: productId }, { status: status });
 
+    // ✅ Xóa cache ALL_ACTIVE_PRODUCTS để client load lại danh sách mới
+    invalidateCacheByPattern("ALL_ACTIVE_PRODUCTS");
+
     res.status(200).json({
       message: "Cập nhật trạng thái thành công",
     });
@@ -363,6 +373,8 @@ export const changeMulti = async (req, res) => {
           { _id: { $in: ids }, deleted: false },
           { status: "active" },
         );
+        // ✅ Xóa cache ALL_ACTIVE_PRODUCTS
+        invalidateCacheByPattern("ALL_ACTIVE_PRODUCTS");
         res.status(200).json({
           message: `Cập nhật trạng thái thành công ${ids.length} sản phẩm`,
         });
@@ -373,6 +385,8 @@ export const changeMulti = async (req, res) => {
           { _id: { $in: ids }, deleted: false },
           { status: "inactive" },
         );
+        // ✅ Xóa cache ALL_ACTIVE_PRODUCTS
+        invalidateCacheByPattern("ALL_ACTIVE_PRODUCTS");
         res.status(200).json({
           message: `Cập nhật trạng thái thành công ${ids.length} sản phẩm`,
         });
@@ -391,6 +405,8 @@ export const changeMulti = async (req, res) => {
             deletedAt: new Date(),
           },
         );
+        // ✅ Xóa cache ALL_ACTIVE_PRODUCTS
+        invalidateCacheByPattern("ALL_ACTIVE_PRODUCTS");
         res.status(200).json({
           message: `Đã xóa thành công ${ids.length} sản phẩm`,
         });
@@ -438,6 +454,9 @@ export const deleteItem = async (req, res) => {
         deletedAt: new Date(),
       },
     );
+
+    // ✅ Xóa cache ALL_ACTIVE_PRODUCTS để client load lại danh sách mới
+    invalidateCacheByPattern("ALL_ACTIVE_PRODUCTS");
 
     res.status(200).json({
       message: "Đã xóa thành công sản phẩm",

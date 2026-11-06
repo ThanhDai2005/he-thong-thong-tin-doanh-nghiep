@@ -31,7 +31,7 @@ const ProductDetailPage = () => {
   const { accessToken } = useAuthStore();
   const { currentProduct, loading, getDetail, getList } = useProductStore();
   const { addToCart } = useCartStore();
-  const { getReviewsByProduct, resetReviews, reviews } = useReviewStore();
+  const { getReviewsByProduct, resetReviews, reviews, totalItems } = useReviewStore();
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -499,7 +499,7 @@ const ProductDetailPage = () => {
                       : "text-gray-500"
                   }`}
                 >
-                  Đánh giá ({reviews.length})
+                  Đánh giá ({totalItems})
                 </button>
               </div>
 

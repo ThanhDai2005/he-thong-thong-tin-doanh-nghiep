@@ -1,4 +1,4 @@
-import adminApi from "@/lib/adminAxios";
+import api from "@/lib/adminAxios";
 
 export const adminProductService = {
   getList: async (
@@ -8,14 +8,14 @@ export const adminProductService = {
     page = 1,
     limit = 10,
   ) => {
-    const response = await adminApi.get(
+    const response = await api.get(
       `/admin/product?keyword=${keyword}&categorySlug=${categorySlug}&status=${status}&page=${page}&limit=${limit}`,
     );
     return response.data;
   },
 
   getDetail: async (productId: string) => {
-    const response = await adminApi.get(`/admin/product/${productId}`);
+    const response = await api.get(`/admin/product/${productId}`);
     return response.data;
   },
 
@@ -33,7 +33,7 @@ export const adminProductService = {
           status?: string;
         },
   ) => {
-    const response = await adminApi.post("/admin/product", data, {
+    const response = await api.post("/admin/product", data, {
       headers: { "Content-Type": "multipart/form-data" },
     });
     return response.data;
@@ -54,7 +54,7 @@ export const adminProductService = {
           status?: string;
         },
   ) => {
-    const response = await adminApi.patch(
+    const response = await api.patch(
       `/admin/product/update/${productId}`,
       data,
       {
@@ -65,7 +65,7 @@ export const adminProductService = {
   },
 
   changeStatus: async (productId: string, status: "active" | "inactive") => {
-    const response = await adminApi.patch(
+    const response = await api.patch(
       `/admin/product/change-status/${status}/${productId}`,
     );
     return response.data;
@@ -75,7 +75,7 @@ export const adminProductService = {
     ids: string[],
     type: "active" | "inactive" | "delete-all",
   ) => {
-    const response = await adminApi.patch(`/admin/product/change-multi`, {
+    const response = await api.patch(`/admin/product/change-multi`, {
       ids,
       type,
     });
@@ -83,7 +83,7 @@ export const adminProductService = {
   },
 
   deleteItem: async (productId: string) => {
-    const response = await adminApi.patch(`/admin/product/delete/${productId}`);
+    const response = await api.patch(`/admin/product/delete/${productId}`);
     return response.data;
   },
 };

@@ -78,14 +78,14 @@ export const create = async (req, res) => {
     });
 
     // Cập nhật averageRating và numReviews trên Product (chỉ tính review không bị ẩn)
-    const allReviews = await Review.find({
+    const allVisibleReviews = await Review.find({
       productId: productId,
       isHidden: false,
     });
-    const numReviews = allReviews.length;
+    const numReviews = allVisibleReviews.length;
     const averageRating =
       numReviews > 0
-        ? allReviews.reduce((sum, r) => sum + r.rating, 0) / numReviews
+        ? allVisibleReviews.reduce((sum, r) => sum + r.rating, 0) / numReviews
         : 0;
 
     await Product.updateOne(

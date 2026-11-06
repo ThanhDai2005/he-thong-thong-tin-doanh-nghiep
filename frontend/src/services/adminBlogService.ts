@@ -1,4 +1,4 @@
-import adminApi from "@/lib/adminAxios";
+import api from "@/lib/adminAxios";
 
 export const adminBlogService = {
   getList: async (
@@ -8,14 +8,14 @@ export const adminBlogService = {
     page = 1,
     limit = 10,
   ) => {
-    const response = await adminApi.get(
+    const response = await api.get(
       `/admin/blog?keyword=${keyword}&blogCategorySlug=${blogCategorySlug}&status=${status}&page=${page}&limit=${limit}`,
     );
     return response.data;
   },
 
   getDetail: async (blogId: string) => {
-    const response = await adminApi.get(`/admin/blog/${blogId}`);
+    const response = await api.get(`/admin/blog/${blogId}`);
     return response.data;
   },
 
@@ -32,7 +32,7 @@ export const adminBlogService = {
           status?: string;
         },
   ) => {
-    const response = await adminApi.post("/admin/blog", data, {
+    const response = await api.post("/admin/blog", data, {
       headers: { "Content-Type": "multipart/form-data" },
     });
     return response.data;
@@ -52,14 +52,18 @@ export const adminBlogService = {
           status?: string;
         },
   ) => {
-    const response = await adminApi.patch(`/admin/blog/update/${blogId}`, data, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    const response = await api.patch(
+      `/admin/blog/update/${blogId}`,
+      data,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+      },
+    );
     return response.data;
   },
 
   changeStatus: async (blogId: string, status: "active" | "inactive") => {
-    const response = await adminApi.patch(
+    const response = await api.patch(
       `/admin/blog/change-status/${status}/${blogId}`,
     );
     return response.data;
@@ -69,7 +73,7 @@ export const adminBlogService = {
     ids: string[],
     type: "active" | "inactive" | "delete-all",
   ) => {
-    const response = await adminApi.patch(`/admin/blog/change-multi`, {
+    const response = await api.patch(`/admin/blog/change-multi`, {
       ids,
       type,
     });
@@ -77,7 +81,7 @@ export const adminBlogService = {
   },
 
   deleteItem: async (blogId: string) => {
-    const response = await adminApi.patch(`/admin/blog/delete/${blogId}`);
+    const response = await api.patch(`/admin/blog/delete/${blogId}`);
     return response.data;
   },
 };

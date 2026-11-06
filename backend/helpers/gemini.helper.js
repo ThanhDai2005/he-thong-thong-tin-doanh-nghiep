@@ -2,6 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import Product from "../models/product.model.js";
 import Category from "../models/category.model.js";
 import Promotion from "../models/promotion.model.js";
+import Order from "../models/order.model.js";
 import logger from "../config/logger.js";
 import dotenv from "dotenv";
 dotenv.config();
@@ -33,10 +34,9 @@ Bạn là trợ lý ảo thân thiện của Quán Ăn Đặc Sản Ba Miền - 
 
 ## QUY TẮC GIAO TIẾP
 ✅ ĐƯỢC PHÉP:
-- Nhiệt tình, thân thiện, lịch sự
+- Nhiệt tình, thân thiện, lịch sự, nói chuyện tự nhiên như nhân viên quán đang chat
 - Trả lời chính xác dựa trên dữ liệu thực đơn và khuyến mãi được cung cấp bên dưới
 - Gợi ý món ăn phù hợp với nhu cầu khách (ngân sách, khẩu vị, dị ứng)
-- Giải thích chi tiết thành phần, cách chế biến, giá cả
 - Hướng dẫn khách đặt hàng qua website
 - Kết nối nhân viên khi khách yêu cầu "Gặp nhân viên" hoặc vấn đề phức tạp
 
@@ -46,37 +46,39 @@ Bạn là trợ lý ảo thân thiện của Quán Ăn Đặc Sản Ba Miền - 
 - Xử lý thanh toán trực tiếp (chỉ hướng dẫn)
 - Cam kết về thời gian giao hàng cụ thể (chỉ nói "khoảng 30-45 phút")
 - Thay đổi giá hoặc tự ý giảm giá
-- Khẳng định một mã khuyến mãi chắc chắn áp dụng được cho khách (hệ thống sẽ tự kiểm tra điều kiện thực tế lúc thanh toán, kể cả điều kiện "khách đã dùng mã này chưa")
+- Khẳng định một mã khuyến mãi chắc chắn áp dụng được cho khách (hệ thống sẽ tự kiểm tra điều kiện thực tế lúc thanh toán)
+
+## QUY TẮC NỘI DUNG BẮT BUỘC
+- Chỉ dùng món / mã KM có trong dữ liệu được cung cấp. Không bịa.
+- Khi có THÔNG TIN KHÁCH HÀNG: chỉ gợi ý món tương tự nếu món đó đang có trong THỰC ĐƠN HIỆN TẠI và còn hàng.
+- Ưu tiên ngắn gọn, dễ đọc trên điện thoại. Khách hỏi chung → trả lời ngắn. Khách hỏi sâu → mới giải thích thêm.
+- Không viết như bài quảng cáo hay menu catalog.
 
 ## CÁC TÌNH HUỐNG THƯỜNG GẶP
 
-### 1. Khách hỏi về món ăn
-- Giới thiệu chi tiết: tên, mô tả, nguyên liệu, giá, đánh giá
-- Nếu món hết hàng: xin lỗi khách và gợi ý món tương tự CÙNG DANH MỤC đang có trong thực đơn được cung cấp (KHÔNG tự bịa combo hay món không có trong dữ liệu)
-- Hỏi về sở thích, dị ứng để tư vấn chính xác
+### 1. Khách hỏi về món ăn / "món ngon" / "nên ăn gì"
+- Chỉ gợi ý **2-3 món** (tối đa 3), ưu tiên món có tag 🔥 Hot hoặc 📈 Trending.
+- Nếu có THÔNG TIN KHÁCH HÀNG: ưu tiên món tương tự lịch sử (vẫn phải có trong thực đơn và còn hàng).
+- Mỗi món chỉ nêu: **tên + giá + 1 câu ngắn** vì sao đáng thử.
+- Không liệt kê nguyên liệu, rating, số lượng đã bán trừ khi khách hỏi cụ thể.
+- Nếu món hết hàng: xin lỗi ngắn + gợi ý 1-2 món cùng danh mục còn hàng.
+- Kết thúc bằng 1 câu hỏi ngắn để tiếp tục (ví dụ: thích cay hay không cay? ăn mấy người?).
 
 ### 2. Khách muốn đặt hàng
-Hướng dẫn: "Để đặt món, anh/chị vui lòng:
-1. Vào mục Thực đơn trên website
-2. Chọn món → Thêm vào giỏ hàng
-3. Kiểm tra giỏ hàng → Thanh toán
-4. Điền thông tin giao hàng → Hoàn tất đơn
-
-Hoặc anh/chị có thể gọi hotline 0987 654 321 để đặt hàng qua điện thoại."
+Hướng dẫn ngắn gọn:
+"Anh/chị vào mục Thực đơn trên website → chọn món → thêm vào giỏ → thanh toán và điền thông tin giao hàng là được ạ. Hoặc gọi hotline 0987 654 321 để đặt qua điện thoại."
 
 ### 3. Khách hỏi về khuyến mãi
-- Trả lời DỰA TRÊN danh sách "KHUYẾN MÃI ĐANG CHẠY" được cung cấp bên dưới, không bịa mã ngoài danh sách này
-- Nếu khách hỏi về một mã cụ thể không có trong danh sách: trả lời mã đó hiện không tồn tại hoặc đã hết hạn/hết lượt, gợi ý các mã đang có
-- Nếu danh sách khuyến mãi trống: "Hiện tại chưa có chương trình ưu đãi nào đang áp dụng, anh/chị vui lòng theo dõi mục 'Ưu đãi' trên website để cập nhật sớm nhất ạ."
+- Chỉ trả lời dựa trên danh sách "KHUYẾN MÃI ĐANG CHẠY".
+- Mã không có trong danh sách: nói rõ hiện không áp dụng / đã hết, rồi gợi ý mã đang có.
+- Danh sách trống: "Hiện chưa có ưu đãi nào đang chạy, anh/chị theo dõi mục Ưu đãi trên website giúp em nhé."
 
-### 4. Khách than phiền/khiếu nại
-"Em rất xin lỗi về sự bất tiện này. Để xử lý tốt nhất, em xin kết nối anh/chị với bộ phận chăm sóc khách hàng ngay ạ."
+### 4. Khách than phiền / khiếu nại
+Xin lỗi ngắn gọn và chuyển nhân viên:
 → Gửi tín hiệu ESCALATE_TO_HUMAN
 
 ### 5. Khách hỏi về đơn hàng
-"Để tra cứu đơn hàng, anh/chị vui lòng:
-- Đăng nhập tài khoản → Mục 'Đơn hàng của tôi'
-- Hoặc liên hệ hotline 0987 654 321 để được hỗ trợ tra cứu ạ"
+"Anh/chị đăng nhập → vào mục Đơn hàng của tôi, hoặc gọi hotline 0987 654 321 để được hỗ trợ tra cứu ạ."
 
 ## TÍN HIỆU ĐẶC BIỆT
 Khi cần kết nối nhân viên: phản hồi của bạn PHẢI CHỈ LÀ DUY NHẤT một object JSON hợp lệ theo đúng format dưới đây, KHÔNG thêm bất kỳ chữ nào khác trước hoặc sau JSON, KHÔNG bọc trong markdown code block:
@@ -87,10 +89,15 @@ Khi cần kết nối nhân viên: phản hồi của bạn PHẢI CHỈ LÀ DUY
 }
 
 ## PHONG CÁCH TRẢ LỜI
-- Xưng hô: "em" (bot), "anh/chị" (khách)
-- Độ dài: 2-4 câu, ngắn gọn, dễ hiểu
-- Emoji: Chỉ dùng 🍲🥘🍜🎉 khi giới thiệu món hoặc ưu đãi
-- Kết thúc: "Em có thể giúp gì thêm cho anh/chị không ạ?"
+- Xưng hô: "em" (bot), "anh/chị" (khách).
+- Độ dài: **2-4 câu ngắn**. Không viết đoạn dài, không liệt kê kiểu catalog.
+- Giọng điệu: tự nhiên như đang chat Zalo với khách, thân thiện, không cứng nhắc.
+- Tránh các cụm từ template như: "Dạ, đối với các món...", "em xin gợi ý đến anh/chị", "thuộc nhóm bán chạy nhất".
+- Khi gợi ý món, viết ngắn gọn. Ví dụ:
+  "Anh/chị có thể thử Phở Bò (50k) - nước dùng đậm, thịt mềm. Hoặc Bún chả (50k) nếu thích vị nướng thơm. Anh/chị thích nước dùng hay đồ nướng hơn ạ?"
+- Không nhồi rating, số phần đã bán, nguyên liệu đầy đủ trừ khi khách hỏi rõ.
+- Emoji: tối đa 1-2 cái, chỉ khi thật sự cần (🍲🍜).
+- Không bắt buộc kết thúc bằng câu cố định. Có thể kết bằng câu hỏi ngắn hoặc để trống nếu đã đủ ý.
 `;
 
 // Cache đơn giản trong bộ nhớ cho context menu + khuyến mãi.
@@ -106,10 +113,87 @@ export const invalidateMenuCache = () => {
   menuCache = { data: null, expiresAt: 0 };
 };
 
-const formatProduct = (p) => {
+/**
+ * Lấy trending tag dựa trên stats từ Order aggregation
+ */
+const getProductTrendingTag = (productStats) => {
+  const { totalSold = 0, totalOrders = 0, lastOrderDate } = productStats;
+
+  const now = new Date();
+  const daysSinceLastOrder = lastOrderDate
+    ? Math.floor((now - new Date(lastOrderDate)) / (1000 * 60 * 60 * 24))
+    : 999;
+
+  // Hot: Bán nhiều + đặt gần đây (trong 7 ngày)
+  if (totalSold >= 50 && daysSinceLastOrder <= 7 && totalOrders >= 25) {
+    return "🔥 Hot";
+  }
+
+  // Trending: Bán ổn + đặt gần đây (trong 14 ngày)
+  if (totalSold >= 30 && daysSinceLastOrder <= 14 && totalOrders >= 15) {
+    return "📈 Trending";
+  }
+
+  // Tốt: Có lượng bán ổn định
+  if (totalSold >= 20 && totalOrders >= 10) {
+    return "✅ Tốt";
+  }
+
+  return ""; // Không có tag
+};
+
+/**
+ * Lấy stats sản phẩm từ Order aggregation (số lượng bán, số đơn, ngày đặt cuối)
+ */
+const getProductStats = async (productIds) => {
+  try {
+    const stats = await Order.aggregate([
+      {
+        $match: {
+          orderStatus: "Delivered",
+        },
+      },
+      { $unwind: "$items" },
+      {
+        $match: {
+          "items.productId": { $in: productIds },
+        },
+      },
+      {
+        $group: {
+          _id: "$items.productId",
+          totalSold: { $sum: "$items.quantity" },
+          totalOrders: { $sum: 1 },
+          lastOrderDate: { $max: "$createdAt" },
+        },
+      },
+    ]);
+
+    const statsMap = {};
+    stats.forEach((stat) => {
+      statsMap[stat._id.toString()] = {
+        totalSold: stat.totalSold,
+        totalOrders: stat.totalOrders,
+        lastOrderDate: stat.lastOrderDate,
+      };
+    });
+
+    return statsMap;
+  } catch (error) {
+    logger.logError("Lỗi khi lấy product stats từ Order", error);
+    return {};
+  }
+};
+
+const formatProduct = (p, productStats = {}) => {
   const rating = (p.averageRating ?? 0).toFixed(1);
   const reviews = p.numReviews ?? 0;
   const price = (p.price ?? 0).toLocaleString("vi-VN");
+
+  const stats = productStats[p._id.toString()] || {};
+  const totalSold = stats.totalSold || 0;
+  const totalOrders = stats.totalOrders || 0;
+  const trendingTag = getProductTrendingTag(stats);
 
   let stockLine = "⚠️ HẾT HÀNG";
   if (p.stock > 0) {
@@ -119,12 +203,21 @@ const formatProduct = (p) => {
         : `Còn hàng: ${p.stock}`;
   }
 
+  // Popularity line - giúp AI biết món nào được yêu thích
+  let popularityLine = "";
+  if (totalOrders > 0) {
+    popularityLine = `\n  📊 Độ phổ biến: ${totalSold} phần đã bán qua ${totalOrders} đơn hàng`;
+    if (trendingTag) {
+      popularityLine += ` | ${trendingTag}`;
+    }
+  }
+
   return `
 - **${p.name}** - ${price}đ
   Mô tả: ${p.description || "Đang cập nhật"}
   Nguyên liệu: ${p.ingredients || "Đang cập nhật"}
   ${stockLine}
-  Đánh giá: ${rating}/5 (${reviews} lượt)`;
+  Đánh giá: ${rating}/5 (${reviews} lượt)${popularityLine}`;
 };
 
 const formatPromotion = (promo) => {
@@ -184,6 +277,10 @@ export const getMenuContext = async () => {
         .lean(),
     ]);
 
+    // Lấy stats từ Order cho tất cả sản phẩm
+    const productIds = products.map((p) => p._id);
+    const productStats = await getProductStats(productIds);
+
     // Gom sản phẩm theo danh mục bằng Map — sản phẩm có categoryId lỗi/bị xoá
     // sẽ rơi vào bucket "Khác" thay vì biến mất âm thầm khỏi context.
     const categoryMap = new Map(
@@ -208,7 +305,8 @@ export const getMenuContext = async () => {
     const menuSection = allSections
       .filter((c) => c.products.length > 0)
       .map(
-        (c) => `\n### ${c.name}\n${c.products.map(formatProduct).join("\n")}`,
+        (c) =>
+          `\n### ${c.name}\n${c.products.map((p) => formatProduct(p, productStats)).join("\n")}`,
       )
       .join("\n");
 
@@ -238,12 +336,109 @@ ${promotionSection}
 };
 
 /**
- * Gửi tin nhắn đến Gemini AI và nhận phản hồi (Sử dụng @google/genai SDK v2.12.0)
+ * Lấy context cá nhân của khách hàng để AI hiểu preferences
  */
-export const getChatbotResponse = async (conversationHistory, userMessage) => {
+const getCustomerContext = async (customerId) => {
+  if (!customerId) return "";
+
+  try {
+    // Lấy 5 đơn hàng gần nhất đã giao
+    const recentOrders = await Order.find({
+      customerId,
+      orderStatus: "Delivered",
+    })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate("items.productId", "name categoryId")
+      .lean();
+
+    if (recentOrders.length === 0) {
+      return "\n## THÔNG TIN KHÁCH HÀNG\nKhách hàng mới, chưa có lịch sử đặt hàng.";
+    }
+
+    // Phân tích món ăn yêu thích (đếm theo quantity để chính xác hơn)
+    const productFrequency = {};
+    const categoryFrequency = {};
+    let totalSpent = 0;
+
+    for (const order of recentOrders) {
+      totalSpent += order.totalAmount || 0;
+      for (const item of order.items || []) {
+        const productId = item.productId?._id?.toString();
+        const productName = item.productId?.name || "Không xác định";
+        const categoryId = item.productId?.categoryId?.toString();
+        const qty = item.quantity || 1;
+
+        if (productId) {
+          if (!productFrequency[productId]) {
+            productFrequency[productId] = { name: productName, count: 0 };
+          }
+          productFrequency[productId].count += qty;
+        }
+
+        if (categoryId) {
+          categoryFrequency[categoryId] =
+            (categoryFrequency[categoryId] || 0) + qty;
+        }
+      }
+    }
+
+    // Top 3 món yêu thích
+    const topProducts = Object.values(productFrequency)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 3)
+      .map((p) => `${p.name} (đã đặt ${p.count} phần)`)
+      .join(", ");
+
+    // Danh mục yêu thích (null-safe)
+    let topCategoryName = "Không xác định";
+    const categoryIds = Object.keys(categoryFrequency);
+    if (categoryIds.length > 0) {
+      const topCategoryId = categoryIds.reduce((a, b) =>
+        categoryFrequency[a] > categoryFrequency[b] ? a : b,
+      );
+      const topCategory = await Category.findById(topCategoryId)
+        .select("name")
+        .lean();
+      if (topCategory?.name) {
+        topCategoryName = topCategory.name;
+      }
+    }
+
+    const avgOrderValue = Math.round(totalSpent / recentOrders.length);
+
+    return `
+## THÔNG TIN KHÁCH HÀNG
+- Loại: Khách quen (đã có ${recentOrders.length} đơn giao thành công)
+- Món yêu thích: ${topProducts || "Chưa có"}
+- Danh mục ưa thích: ${topCategoryName}
+- Giá trị đơn hàng trung bình: ${avgOrderValue.toLocaleString("vi-VN")}đ
+
+**GỢI Ý TƯ VẤN:**
+- Ưu tiên giới thiệu các món tương tự với món khách đã thích, NHƯNG chỉ chọn món đang có trong THỰC ĐƠN HIỆN TẠI và còn hàng.
+- Gợi ý món trong danh mục "${topCategoryName}" nếu phù hợp.
+- Nếu khách hỏi "món ngon", ưu tiên món có tag 🔥 Hot hoặc 📈 Trending trong thực đơn.
+- Vẫn giữ câu trả lời ngắn gọn (2-4 câu), không liệt kê dài.
+`;
+  } catch (error) {
+    logger.logError("Lỗi khi lấy customer context", error, { customerId });
+    return "";
+  }
+};
+
+/**
+ * Gửi tin nhắn đến Gemini AI và nhận phản hồi (Sử dụng @google/genai SDK)
+ */
+export const getChatbotResponse = async (
+  conversationHistory,
+  userMessage,
+  customerId = null,
+) => {
   try {
     const menuContext = await getMenuContext();
-    const fullSystemPrompt = SYSTEM_CONTEXT + "\n" + menuContext;
+    const customerContext = await getCustomerContext(customerId);
+    const fullSystemPrompt =
+      SYSTEM_CONTEXT + "\n" + menuContext + customerContext;
 
     // 1. Cấu trúc lại History chuẩn theo SDK @google/genai
     // Role bắt buộc là "user" hoặc "model" (không dùng "bot" hay "assistant")
@@ -263,9 +458,7 @@ export const getChatbotResponse = async (conversationHistory, userMessage) => {
 
     // 3. Gọi generateContent API
     // Lưu ý: KHÔNG set temperature/topP — Google đã deprecate và IGNORE 2 tham số này
-    // trên toàn bộ dòng Gemini 3.x (bao gồm gemini-3.6-flash), request vẫn trả 200 OK
-    // nhưng giá trị custom không có tác dụng. Muốn kiểm soát độ nhất quán, dùng
-    // system instruction rõ ràng (đã làm ở SYSTEM_CONTEXT) thay vì sampling params.
+    // trên dòng Gemini mới. Muốn kiểm soát độ nhất quán thì dùng system instruction rõ ràng.
     const response = await ai.models.generateContent({
       model: "gemini-3.6-flash",
       contents,
@@ -313,7 +506,7 @@ export const getChatbotResponse = async (conversationHistory, userMessage) => {
     };
   } catch (error) {
     logger.logError("Lỗi khi gọi Gemini API", error, {
-      model: "gemini-3.8-flash",
+      model: "gemini-3.6-flash",
     });
     return {
       text: "Em xin lỗi, hệ thống đang gặp chút vấn đề. Anh/chị vui lòng thử lại sau hoặc liên hệ hotline 0987 654 321 để được hỗ trợ ngay ạ.",

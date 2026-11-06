@@ -1,4 +1,4 @@
-import adminApi from "@/lib/adminAxios";
+import api from "@/lib/adminAxios";
 
 export const adminCustomerVoucherService = {
   list: async (
@@ -7,16 +7,14 @@ export const adminCustomerVoucherService = {
     page: number = 1,
     limit: number = 10,
   ) => {
-    const response = await adminApi.get(
+    const response = await api.get(
       `/admin/customer-vouchers?keyword=${keyword}&status=${status}&page=${page}&limit=${limit}`,
     );
     return response.data;
   },
 
   getDetail: async (promotionId: string) => {
-    const response = await adminApi.get(
-      `/admin/customer-vouchers/${promotionId}`,
-    );
+    const response = await api.get(`/admin/customer-vouchers/${promotionId}`);
     return response.data;
   },
 
@@ -32,12 +30,12 @@ export const adminCustomerVoucherService = {
     status?: "active" | "inactive";
     customerIds: string[];
   }) => {
-    const response = await adminApi.post("/admin/customer-vouchers", data);
+    const response = await api.post("/admin/customer-vouchers", data);
     return response.data;
   },
 
   issueVoucher: async (promotionId: string, customerIds: string[]) => {
-    const response = await adminApi.post(
+    const response = await api.post(
       `/admin/customer-vouchers/issue/${promotionId}`,
       { customerIds },
     );

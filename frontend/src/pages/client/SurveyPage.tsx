@@ -9,7 +9,7 @@ const SurveyPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
-    fetchSurveys(currentPage, 4);
+    fetchSurveys(currentPage, 10);
   }, [currentPage, fetchSurveys]);
 
   return (

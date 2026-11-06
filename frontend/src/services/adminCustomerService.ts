@@ -51,10 +51,13 @@ export const adminCustomerService = {
     return response.data;
   },
 
-  changeMulti: async (type: string, ids: string[]) => {
+  changeMulti: async (
+    ids: string[],
+    type: "active" | "inactive" | "delete-all",
+  ) => {
     const response = await adminAxios.patch("/admin/customer/change-multi", {
-      type,
       ids,
+      type,
     });
     return response.data;
   },

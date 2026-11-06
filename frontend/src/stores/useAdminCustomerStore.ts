@@ -27,6 +27,7 @@ export const useAdminCustomerStore = create<AdminCustomerStore>((set) => ({
     } catch (error) {
       console.error("Lỗi khi tải danh sách khách hàng:", error);
       set({ loading: false });
+      throw error;
     }
   },
 
@@ -38,8 +39,8 @@ export const useAdminCustomerStore = create<AdminCustomerStore>((set) => ({
       return response.data;
     } catch (error) {
       console.error("Lỗi khi tải chi tiết khách hàng:", error);
-      toast.error("Không thể tải thông tin khách hàng");
       set({ loading: false });
+      toast.error("Không thể tải chi tiết khách hàng");
       throw error;
     }
   },
@@ -76,31 +77,29 @@ export const useAdminCustomerStore = create<AdminCustomerStore>((set) => ({
     try {
       set({ loading: true });
       await adminCustomerService.changeStatus(customerId, status);
-      toast.success(
-        `${status === "active" ? "Kích hoạt" : "Khóa"} tài khoản thành công`,
-      );
+      const message =
+        status === "active"
+          ? "Kích hoạt khách hàng thành công"
+          : "Khóa khách hàng thành công";
+      toast.success(message);
       set({ loading: false });
     } catch (error) {
-      console.error("Lỗi khi đổi trạng thái:", error);
-      toast.error("Không thể đổi trạng thái");
+      console.error("Lỗi khi thay đổi trạng thái khách hàng:", error);
+      toast.error("Thay đổi trạng thái thất bại");
       set({ loading: false });
       throw error;
     }
   },
 
-  changeMulti: async (type, ids) => {
+  changeMulti: async (ids, type) => {
     try {
       set({ loading: true });
-      await adminCustomerService.changeMulti(type, ids);
-      let message = "Thao tác thành công";
-      if (type === "active") message = "Kích hoạt thành công";
-      if (type === "inactive") message = "Khóa thành công";
-      if (type === "delete-all") message = "Xóa thành công";
-      toast.success(message);
+      const response = await adminCustomerService.changeMulti(ids, type);
+      toast.success(response.message);
       set({ loading: false });
     } catch (error) {
-      console.error("Lỗi khi thao tác hàng loạt:", error);
-      toast.error("Không thể thực hiện thao tác");
+      console.error("Lỗi khi thao tác hàng loạt khách hàng:", error);
+      toast.error("Thao tác hàng loạt thất bại");
       set({ loading: false });
       throw error;
     }
@@ -114,7 +113,7 @@ export const useAdminCustomerStore = create<AdminCustomerStore>((set) => ({
       set({ loading: false });
     } catch (error) {
       console.error("Lỗi khi xóa khách hàng:", error);
-      toast.error("Không thể xóa khách hàng");
+      toast.error("Xóa khách hàng thất bại");
       set({ loading: false });
       throw error;
     }
@@ -132,9 +131,5 @@ export const useAdminCustomerStore = create<AdminCustomerStore>((set) => ({
       set({ loading: false });
       throw error;
     }
-  },
-
-  clearCurrentCustomer: () => {
-    set({ currentCustomer: null });
   },
 }));

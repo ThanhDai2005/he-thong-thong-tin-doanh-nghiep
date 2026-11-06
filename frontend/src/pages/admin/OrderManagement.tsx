@@ -231,8 +231,9 @@ const OrderManagement = () => {
     const isPaid = status === "Paid";
     return (
       <span
-        className={`inline-flex items-center px-2.5 py-1 rounded-md text-[12px] font-bold ${isPaid ? "bg-[#d1fae5] text-[#15803d]" : "bg-[#fef3c7] text-[#92400e]"
-          }`}
+        className={`inline-flex items-center px-2.5 py-1 rounded-md text-[12px] font-bold ${
+          isPaid ? "bg-[#d1fae5] text-[#15803d]" : "bg-[#fef3c7] text-[#92400e]"
+        }`}
       >
         {isPaid ? "Đã thanh toán" : "Chưa thanh toán"}{" "}
         <span className="ml-1 opacity-70">({method})</span>
@@ -383,8 +384,9 @@ const OrderManagement = () => {
           onMouseLeave={handleMasterLeave}
         >
           <div
-            className={`bg-white rounded-[12px] shadow-sm border border-gray-200 overflow-hidden min-w-0 transition-all duration-200 ${panelOpen ? "flex-1" : "w-full"
-              }`}
+            className={`bg-white rounded-[12px] shadow-sm border border-gray-200 overflow-hidden min-w-0 transition-all duration-200 ${
+              panelOpen ? "flex-1" : "w-full"
+            }`}
           >
             <div className="px-6 py-4 border-b border-gray-100">
               <h2 className="text-[18px] font-bold text-gray-900">
@@ -412,9 +414,30 @@ const OrderManagement = () => {
                 <tbody className="divide-y divide-gray-50">
                   {showSkeleton ? (
                     Array.from({ length: limit }).map((_, index) => (
-                      <tr key={index} className="animate-pulse">
-                        <td colSpan={panelOpen ? 5 : 7} className="px-4 py-4">
-                          <div className="h-4 bg-gray-200 rounded w-full" />
+                      <tr key={index} className="animate-pulse bg-white">
+                        <td className="px-6 py-4">
+                          <div className="h-4 bg-gray-200 rounded w-20"></div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="h-4 bg-gray-200 rounded w-32"></div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="h-6 bg-gray-200 rounded-md w-36"></div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="h-4 bg-gray-200 rounded w-24"></div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="h-4 bg-gray-200 rounded w-28"></div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="h-4 bg-gray-200 rounded w-28"></div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <div className="h-7 bg-gray-200 rounded-md w-full"></div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <div className="h-8 bg-gray-200 rounded-lg w-8 mx-auto"></div>
                         </td>
                       </tr>
                     ))
@@ -429,10 +452,11 @@ const OrderManagement = () => {
                       return (
                         <tr
                           key={order._id}
-                          className={`transition-colors cursor-pointer ${isActive
-                            ? "bg-[#fef2f2] ring-1 ring-inset ring-[#b51c00]/20"
-                            : "bg-white hover:bg-gray-50"
-                            }`}
+                          className={`transition-colors cursor-pointer ${
+                            isActive
+                              ? "bg-[#fef2f2] ring-1 ring-inset ring-[#b51c00]/20"
+                              : "bg-white hover:bg-gray-50"
+                          }`}
                           onMouseEnter={() => handleRowEnter(order._id)}
                           onClick={() => handleRowClick(order._id)}
                         >
@@ -480,10 +504,11 @@ const OrderManagement = () => {
                                   )
                                 }
                                 disabled={isEndState}
-                                className={`w-full min-w-[110px] px-2 py-1.5 rounded-md border text-xs font-bold outline-none ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border} ${isEndState
-                                  ? "opacity-75 cursor-not-allowed"
-                                  : "cursor-pointer"
-                                  }`}
+                                className={`w-full min-w-[110px] px-2 py-1.5 rounded-md border text-xs font-bold outline-none ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border} ${
+                                  isEndState
+                                    ? "opacity-75 cursor-not-allowed"
+                                    : "cursor-pointer"
+                                }`}
                               >
                                 <option value={order.orderStatus}>
                                   {statusConfig.label}

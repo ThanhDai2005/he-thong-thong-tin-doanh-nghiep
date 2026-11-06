@@ -1,15 +1,15 @@
-import adminApi from "@/lib/adminAxios";
+import api from "@/lib/adminAxios";
 
 export const adminSupplierService = {
   getList: async (keyword = "", status = "", page = 1, limit = 10) => {
-    const response = await adminApi.get(
+    const response = await api.get(
       `/admin/supplier?keyword=${keyword}&status=${status}&page=${page}&limit=${limit}`,
     );
     return response.data;
   },
 
   getDetail: async (supplierId: string) => {
-    const response = await adminApi.get(`/admin/supplier/${supplierId}`);
+    const response = await api.get(`/admin/supplier/${supplierId}`);
     return response.data;
   },
 
@@ -21,7 +21,7 @@ export const adminSupplierService = {
     taxCode?: string;
     status?: string;
   }) => {
-    const response = await adminApi.post("/admin/supplier", data);
+    const response = await api.post("/admin/supplier", data);
     return response.data;
   },
 
@@ -36,7 +36,7 @@ export const adminSupplierService = {
       status?: string;
     },
   ) => {
-    const response = await adminApi.patch(
+    const response = await api.patch(
       `/admin/supplier/update/${supplierId}`,
       data,
     );
@@ -44,7 +44,7 @@ export const adminSupplierService = {
   },
 
   changeStatus: async (supplierId: string, status: "active" | "inactive") => {
-    const response = await adminApi.patch(
+    const response = await api.patch(
       `/admin/supplier/change-status/${status}/${supplierId}`,
     );
     return response.data;
@@ -54,7 +54,7 @@ export const adminSupplierService = {
     ids: string[],
     type: "active" | "inactive" | "delete-all",
   ) => {
-    const response = await adminApi.patch("/admin/supplier/change-multi", {
+    const response = await api.patch("/admin/supplier/change-multi", {
       ids,
       type,
     });
@@ -62,7 +62,7 @@ export const adminSupplierService = {
   },
 
   deleteItem: async (supplierId: string) => {
-    const response = await adminApi.patch(
+    const response = await api.patch(
       `/admin/supplier/delete/${supplierId}`,
     );
     return response.data;

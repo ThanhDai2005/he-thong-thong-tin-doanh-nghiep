@@ -7,6 +7,7 @@ export const useReviewStore = create<ReviewState>((set, get) => ({
   loading: false,
   currentPage: 1,
   totalPages: 1,
+  totalItems: 0,
 
   createReview: async (
     productId,
@@ -46,6 +47,7 @@ export const useReviewStore = create<ReviewState>((set, get) => ({
       set({
         reviews: response.data,
         totalPages: response.totalPages,
+        totalItems: response.totalItems,
         currentPage: page,
         loading: false,
       });
@@ -74,6 +76,7 @@ export const useReviewStore = create<ReviewState>((set, get) => ({
       set({
         reviews: [...currentReviews, ...response.data],
         totalPages: response.totalPages,
+        totalItems: response.totalItems,
         currentPage: nextPage,
         loading: false,
       });
@@ -86,6 +89,6 @@ export const useReviewStore = create<ReviewState>((set, get) => ({
   },
 
   resetReviews: () => {
-    set({ reviews: [], currentPage: 1, totalPages: 1 });
+    set({ reviews: [], currentPage: 1, totalPages: 1, totalItems: 0 });
   },
 }));

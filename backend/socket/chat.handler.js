@@ -344,10 +344,11 @@ const handleBotResponse = async (
       content: m.content,
     }));
 
-    // Gọi Gemini AI
+    // Gọi Gemini AI với customerId để AI hiểu preferences
     const aiResponse = await getChatbotResponse(
       conversationHistory,
       userMessage,
+      conversation.customerId,
     );
 
     // Lưu tin nhắn bot

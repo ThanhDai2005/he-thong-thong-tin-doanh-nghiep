@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useReactToPrint } from "react-to-print";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -10,6 +11,7 @@ import {
   Clock,
   Ban,
   ShoppingBag,
+  FileText,
 } from "lucide-react";
 import AdminHeader from "@/components/admin/AdminHeader";
 import NoPermissionScreen from "@/components/admin/NoPermissionScreen";
@@ -74,9 +76,15 @@ const StockReceiptDetail = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
 
   const canView = hasPermission(user, "stock_receipts_view");
   const canEdit = hasPermission(user, "stock_receipts_edit");
+
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: `Phiếu Nhập Hàng #${receiptId?.slice(-8).toUpperCase()}`,
+  });
 
   useEffect(() => {
     if (!receiptId) return;
@@ -169,8 +177,217 @@ const StockReceiptDetail = () => {
     }
   };
 
+
   return (
-    <div className="bg-[#f7f9fb] min-h-screen pb-16">
+    <>
+      <style>{`
+        @media print {
+          @page {
+            margin: 12mm 10mm;
+            size: A4 portrait;
+          }
+
+          header, footer, nav, .no-print, .header, .footer {
+            display: none !important;
+          }
+        }
+      `}</style>
+
+      {/* ============================================================ */}
+      {/* BẢN IN HÓA ĐƠN NHẬP HÀNG                                      */}
+      {/* ============================================================ */}
+      <div
+        ref={printRef}
+        className="hidden print:block text-gray-900 font-sans max-w-4xl mx-auto"
+      >
+        {currentReceipt && (
+          <>
+            {/* Brand header */}
+            <div className="text-center mb-8">
+              <div className="flex justify-center mb-1">
+                <img
+                  src="/logo.webp"
+                  alt="Logo Đặc Sản Ba Miền"
+                  className="w-20 h-auto object-cover"
+                />
+              </div>
+
+              <h1 className="text-3xl font-bold text-[#b51c00] tracking-tight">
+                Đặc Sản Ba Miền
+              </h1>
+              <p className="text-sm text-gray-600 mt-1">
+                Nền tảng đặt đồ ăn trực tuyến
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                Hotline: 1900 xxxx | Email: support@ds3mvn.com
+              </p>
+            </div>
+
+            <div className="border-t-2 border-gray-300 mb-8"></div>
+
+            {/* Invoice meta row */}
+            <div className="flex justify-between items-start mb-8">
+              <div>
+                <p className="text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">
+                  Mã Phiếu Nhập
+                </p>
+                <p className="text-lg font-bold text-gray-900">
+                  #{r._id.slice(-8).toUpperCase()}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">
+                  Ngày Tạo
+                </p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {formatDate(r.createdAt)}
+                </p>
+              </div>
+            </div>
+
+            {/* Supplier info */}
+            <div className="mb-8">
+              <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b-2 border-gray-800 pb-2 mb-3">
+                Thông tin nhà cung cấp
+              </h2>
+              <div className="text-base text-gray-800 space-y-2">
+                <p>
+                  <span className="font-semibold text-gray-900 inline-block w-32">
+                    Tên NCC:
+                  </span>
+                  {r.supplierId?.name || "N/A"}
+                </p>
+                <p>
+                  <span className="font-semibold text-gray-900 inline-block w-32">
+                    Điện thoại:
+                  </span>
+                  {r.supplierId?.phone || "N/A"}
+                </p>
+                <p>
+                  <span className="font-semibold text-gray-900 inline-block w-32">
+                    Email:
+                  </span>
+                  {r.supplierId?.email || "N/A"}
+                </p>
+                {r.supplierId?.address && (
+                  <p>
+                    <span className="font-semibold text-gray-900 inline-block w-32">
+                      Địa chỉ:
+                    </span>
+                    {r.supplierId.address}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Stock items */}
+            <div className="mb-8">
+              <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b-2 border-gray-800 pb-2 mb-3">
+                Chi tiết sản phẩm nhập
+              </h2>
+              <table className="w-full text-base border-collapse mt-2">
+                <thead>
+                  <tr className="border-b-2 border-gray-300">
+                    <th className="text-left py-2 pr-2 font-bold w-12 text-gray-700">
+                      STT
+                    </th>
+                    <th className="text-left py-2 pr-2 font-bold text-gray-700">
+                      Sản phẩm
+                    </th>
+                    <th className="text-center py-2 px-2 font-bold w-16 text-gray-700">
+                      SL
+                    </th>
+                    <th className="text-right py-2 px-2 font-bold w-32 text-gray-700">
+                      Giá nhập
+                    </th>
+                    <th className="text-right py-2 pl-2 font-bold w-36 text-gray-700">
+                      Thành tiền
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {r.items.map((item, idx) => {
+                    const prod = item.productId;
+                    return (
+                      <tr key={idx} className="border-b border-gray-200">
+                        <td className="py-3 pr-2 text-gray-600">{idx + 1}</td>
+                        <td className="py-3 pr-2 font-semibold text-gray-900">
+                          {prod?.name || "N/A"}
+                        </td>
+                        <td className="py-3 px-2 text-center text-gray-800">
+                          {item.quantity}
+                        </td>
+                        <td className="py-3 px-2 text-right text-gray-800">
+                          {formatMoney(item.importPrice)}
+                        </td>
+                        <td className="py-3 pl-2 text-right font-bold text-gray-900">
+                          {formatMoney(item.quantity * item.importPrice)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Summary */}
+            <div className="grid grid-cols-2 gap-12 pt-6 border-t-2 border-gray-800 print:break-inside-avoid">
+              <div>
+                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">
+                  Thông tin phiếu
+                </h3>
+                <div className="text-base space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Người tạo</span>
+                    <span className="font-semibold text-gray-900 text-right">
+                      {r.createdBy?.userId?.displayName || "—"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Trạng thái</span>
+                    <span className="font-semibold text-gray-900">
+                      {cfg.label}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 text-right">
+                  Tổng kết phiếu nhập
+                </h3>
+                <div className="text-base space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Tổng số mặt hàng</span>
+                    <span className="font-semibold text-gray-900">
+                      {r.items.length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Tổng SL nhập</span>
+                    <span className="font-semibold text-indigo-600">
+                      +{r.items.reduce((s, i) => s + i.quantity, 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between pt-3 mt-3 border-t border-gray-300">
+                    <span className="font-bold text-gray-900 uppercase">
+                      Tổng tiền nhập
+                    </span>
+                    <span className="font-black text-[#b51c00] text-xl">
+                      {formatMoney(r.totalAmount)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* ============================================================ */}
+      {/* GIAO DIỆN HIỂN THỊ TRÊN MÀN HÌNH                             */}
+      {/* ============================================================ */}
+      <div className="print:hidden bg-[#f7f9fb] min-h-screen pb-16">
       <AdminHeader
         items={[
           { label: "Admin", href: "/admin/dashboard" },
@@ -202,6 +419,13 @@ const StockReceiptDetail = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={handlePrint}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[#b51c00] hover:bg-[#8e1400] text-white font-bold rounded-lg transition-colors"
+            >
+              <FileText className="w-4 h-4" />
+              In PDF
+            </button>
             <div
               className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg ${cfg.bg} ${cfg.text} font-bold`}
             >
@@ -388,7 +612,7 @@ const StockReceiptDetail = () => {
                 <div>
                   <p className="text-sm text-gray-500">Người tạo phiếu</p>
                   <p className="font-semibold text-gray-900 mt-1">
-                    {r.createdBy?.displayName || "—"}
+                    {r.createdBy?.userId?.displayName || "—"}
                   </p>
                 </div>
                 <div>
@@ -519,7 +743,8 @@ const StockReceiptDetail = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </>
   );
 };
 

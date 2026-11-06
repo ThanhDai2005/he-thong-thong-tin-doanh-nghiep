@@ -3,6 +3,16 @@ import Product from "../../../../models/product.model.js";
 import Order from "../../../../models/order.model.js";
 import Category from "../../../../models/category.model.js";
 import logger from "../../../../config/logger.js";
+import {
+  calculateRevenueByMonth,
+  calculateRevenueByQuarter,
+  calculateRevenueByYear,
+  calculateRevenueByStaff,
+  calculateOrderStatusPercentage,
+  calculateRevenueByProductQuarter,
+  calculateRevenueByCustomerYear,
+  calculateRevenueByCustomerQuarter,
+} from "../../../../helpers/dashboard.helper.js";
 
 // [GET] /api/v1/admin/dashboard
 export const dashboard = async (req, res) => {
@@ -171,6 +181,30 @@ export const dashboard = async (req, res) => {
       revenue: item.totalRevenue,
     }));
 
+    // 7. [5b] Thống kê Thu/Chi/Lợi nhuận theo Tháng/Quý/Năm (1 bảng, 3 chế độ)
+    const revenueByMonth = await calculateRevenueByMonth(currentYear);
+    const revenueByQuarter = await calculateRevenueByQuarter(currentYear);
+    const revenueByYear = await calculateRevenueByYear();
+
+    // 8. [5c] Doanh thu theo Nhân viên (Staff) - 3 năm gần nhất
+    const revenueByStaff = await calculateRevenueByStaff();
+
+    // 9. [5d] % Đơn hàng theo trạng thái - có thể filter theo quý/năm
+    const orderStatusPercentage =
+      calculateOrderStatusPercentage(orderStatusData);
+
+    // 10. [5e] Doanh thu theo Sản phẩm theo Quý
+    const revenueByProductQuarter =
+      await calculateRevenueByProductQuarter(currentYear);
+
+    // 11. [5d] Doanh thu theo Khách hàng (Year/Quarter)
+    const revenueByCustomerYear = await calculateRevenueByCustomerYear();
+    const customerQuarterYear = req.query.customerYear
+      ? parseInt(req.query.customerYear)
+      : currentYear;
+    const revenueByCustomerQuarter =
+      await calculateRevenueByCustomerQuarter(customerQuarterYear);
+
     res.status(200).json({
       message: "Lấy thống kê dashboard thành công",
       data: {
@@ -185,6 +219,15 @@ export const dashboard = async (req, res) => {
         monthlyRevenue: monthlyRevenue,
         recentOrders: formattedRecentOrders,
         topProducts: topProducts,
+        // Thêm các thống kê mới (5b-5e)
+        revenueByMonth: revenueByMonth,
+        revenueByQuarter: revenueByQuarter,
+        revenueByYear: revenueByYear,
+        revenueByStaff: revenueByStaff,
+        orderStatusPercentage: orderStatusPercentage,
+        revenueByProductQuarter: revenueByProductQuarter,
+        revenueByCustomerYear: revenueByCustomerYear,
+        revenueByCustomerQuarter: revenueByCustomerQuarter,
       },
     });
   } catch (error) {

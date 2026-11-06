@@ -2,6 +2,10 @@ import Product from "../../../../models/product.model.js";
 import Category from "../../../../models/category.model.js";
 import { getActiveProductPromotions } from "../../../../helpers/productPromotion.js";
 import logger from "../../../../config/logger.js";
+import {
+  getCachedSearch,
+  setCachedSearch,
+} from "../../../../helpers/searchCache.helper.js";
 
 // [GET] /api/v1/product
 export const list = async (req, res) => {
@@ -17,12 +21,71 @@ export const list = async (req, res) => {
     } = req.query;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 12;
-    const skip = (page - 1) * limit;
-    const filter = {
-      status: "active",
-      deleted: false,
+
+    // ✅ KEY DUY NHẤT cho TOÀN BỘ danh sách sản phẩm active (theo yêu cầu cô giáo)
+    const ALL_PRODUCTS_CACHE_KEY = "ALL_ACTIVE_PRODUCTS";
+
+    // ✅ Bước 1: Kiểm tra xem đã có toàn bộ danh sách sản phẩm trong RAM chưa
+    let allProducts = getCachedSearch(ALL_PRODUCTS_CACHE_KEY);
+
+    // ✅ Bước 2: Nếu chưa có (Cache Miss) → Query DB ĐÚng 1 LẦN duy nhất
+    if (!allProducts) {
+      logger.info("[CACHE MISS] ALL_ACTIVE_PRODUCTS - Query DB lần duy nhất");
+
+      // Query TOÀN BỘ sản phẩm active từ Database
+      allProducts = await Product.find({
+        status: "active",
+        deleted: false,
+      })
+        .populate("categoryId", "name slug")
+        .lean();
+
+      // Gắn activePromotion cho toàn bộ sản phẩm
+      const allProductIds = allProducts.map((p) => p._id);
+      const promoMap = await getActiveProductPromotions(allProductIds);
+
+      allProducts = allProducts.map((product) => ({
+        ...product,
+        activePromotion: promoMap[product._id.toString()] || null,
+      }));
+
+      // ✅ Lưu TOÀN BỘ danh sách vào RAM (TTL: 10 phút)
+      setCachedSearch(ALL_PRODUCTS_CACHE_KEY, allProducts, 600);
+      logger.info(
+        `[CACHE SET] ALL_ACTIVE_PRODUCTS - Đã lưu ${allProducts.length} sản phẩm vào RAM`,
+      );
+    } else {
+      logger.info(
+        `[CACHE HIT] ALL_ACTIVE_PRODUCTS - Tái sử dụng ${allProducts.length} sản phẩm từ RAM`,
+      );
+    }
+
+    // ✅ Bước 3: LỌC TRONG RAM bằng JavaScript (KHÔNG query DB nữa)
+    const slugify = (str = "") => {
+      return str
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/đ/g, "d")
+        .replace(/Đ/g, "D")
+        .trim()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "");
     };
 
+    let filtered = [...allProducts]; // Copy mảng để không ảnh hưởng cache gốc
+
+    // Filter theo keyword
+    if (keyword) {
+      const search = slugify(keyword);
+      filtered = filtered.filter(
+        (p) =>
+          p.name.toLowerCase().includes(keyword.toLowerCase()) ||
+          p.slug.includes(search),
+      );
+    }
+
+    // Filter theo category
     if (categorySlug) {
       const category = await Category.findOne({
         slug: categorySlug,
@@ -36,84 +99,56 @@ export const list = async (req, res) => {
         });
       }
 
-      filter.categoryId = category._id;
+      filtered = filtered.filter(
+        (p) =>
+          p.categoryId &&
+          p.categoryId._id.toString() === category._id.toString(),
+      );
     }
 
     // Filter theo khoảng giá
     if (minPrice || maxPrice) {
-      filter.price = {};
-      if (minPrice) filter.price.$gte = Number(minPrice);
-      if (maxPrice) filter.price.$lte = Number(maxPrice);
-    }
-
-    const slugify = (str = "") => {
-      return str
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/đ/g, "d")
-        .replace(/Đ/g, "D")
-        .trim()
-        .replace(/\s+/g, "-")
-        .replace(/[^a-z0-9-]/g, "");
-    };
-
-    if (keyword) {
-      const search = slugify(keyword);
-
-      filter.$or = [
-        { name: { $regex: keyword, $options: "i" } },
-        { slug: { $regex: search, $options: "i" } },
-      ];
+      const min = minPrice ? Number(minPrice) : 0;
+      const max = maxPrice ? Number(maxPrice) : Infinity;
+      filtered = filtered.filter((p) => p.price >= min && p.price <= max);
     }
 
     // Filter theo khuyến mãi
     if (hasPromotion === "true") {
-      // Lấy tất cả productIds đang có promotion active
-      const allProducts = await Product.find(filter).select("_id").lean();
-      const allProductIds = allProducts.map((p) => p._id);
-      const promoMap = await getActiveProductPromotions(allProductIds);
-
-      // Chỉ giữ lại productIds có activePromotion
-      const productIdsWithPromo = allProductIds.filter(
-        (id) => promoMap[id.toString()] !== undefined,
-      );
-
-      // Thêm vào filter
-      filter._id = { $in: productIdsWithPromo };
+      filtered = filtered.filter((p) => p.activePromotion !== null);
     }
 
-    const sort = {};
-    if (sortKey && sortValue) {
-      sort[sortKey] = Number(sortValue);
-    } else {
-      sort.createdAt = -1;
-    }
+    // ✅ Bước 4: SẮP XẾP trong RAM
+    const sortKeyParam = sortKey || "createdAt";
+    const sortValueParam = sortValue ? Number(sortValue) : -1;
 
-    const [data, totalItems] = await Promise.all([
-      Product.find(filter)
-        .populate("categoryId", "name slug")
-        .sort(sort)
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      Product.countDocuments(filter),
-    ]);
+    filtered.sort((a, b) => {
+      let valA = a[sortKeyParam];
+      let valB = b[sortKeyParam];
 
-    // Gắn activePromotion cho từng product trong list
-    const productIds = data.map((p) => p._id);
-    const promoMap = await getActiveProductPromotions(productIds);
+      // Xử lý Date object - chỉ gọi getTime() nếu là Date
+      if (valA instanceof Date) valA = valA.getTime();
+      if (valB instanceof Date) valB = valB.getTime();
 
-    const dataWithPromo = data.map((product) => ({
-      ...product,
-      activePromotion: promoMap[product._id.toString()] || null,
-    }));
+      if (sortValueParam === 1) {
+        return valA > valB ? 1 : valA < valB ? -1 : 0;
+      } else {
+        return valA < valB ? 1 : valA > valB ? -1 : 0;
+      }
+    });
+
+    // ✅ Bước 5: PHÂN TRANG trong RAM
+    const totalItems = filtered.length;
+    const totalPages = Math.ceil(totalItems / limit);
+    const skip = (page - 1) * limit;
+    const paginatedData = filtered.slice(skip, skip + limit);
 
     res.status(200).json({
       message: "Lấy danh sách product thành công",
-      data: dataWithPromo,
-      totalItems: totalItems,
-      totalPages: Math.ceil(totalItems / limit),
+      data: paginatedData,
+      totalItems,
+      totalPages,
+      cached: true,
     });
   } catch (error) {
     logger.logError("Lỗi khi gọi list product", error, {

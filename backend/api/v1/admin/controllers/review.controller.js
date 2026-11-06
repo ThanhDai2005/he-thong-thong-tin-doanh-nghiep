@@ -1,5 +1,6 @@
 import Review from "../../../../models/review.model.js";
 import logger from "../../../../config/logger.js";
+import Product from "../../../../models/product.model.js";
 
 // [GET] /api/v1/admin/review/stats
 export const stats = async (req, res) => {
@@ -282,6 +283,25 @@ export const toggleHidden = async (req, res) => {
     review.hiddenBy = nowHidden ? staffId : null;
 
     await review.save();
+
+    // Cập nhật lại averageRating và numReviews của Product (chỉ tính review không bị ẩn)
+    const allVisibleReviews = await Review.find({
+      productId: review.productId,
+      isHidden: false,
+    });
+    const numReviews = allVisibleReviews.length;
+    const averageRating =
+      numReviews > 0
+        ? allVisibleReviews.reduce((sum, r) => sum + r.rating, 0) / numReviews
+        : 0;
+
+    await Product.updateOne(
+      { _id: review.productId },
+      {
+        averageRating: Math.round(averageRating * 10) / 10,
+        numReviews: numReviews,
+      },
+    );
 
     res.status(200).json({
       message: nowHidden ? "Đã ẩn đánh giá" : "Đã hiện đánh giá",

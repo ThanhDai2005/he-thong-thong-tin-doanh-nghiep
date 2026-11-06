@@ -1,4 +1,4 @@
-import adminApi from "@/lib/adminAxios";
+import api from "@/lib/adminAxios";
 
 export const adminOrderPromotionService = {
   list: async (
@@ -7,14 +7,14 @@ export const adminOrderPromotionService = {
     page: number = 1,
     limit: number = 10,
   ) => {
-    const response = await adminApi.get(
+    const response = await api.get(
       `/admin/order-promotions?keyword=${keyword}&status=${status}&page=${page}&limit=${limit}`,
     );
     return response.data;
   },
 
   getDetail: async (orderPromotionId: string) => {
-    const response = await adminApi.get(
+    const response = await api.get(
       `/admin/order-promotions/${orderPromotionId}`,
     );
     return response.data;
@@ -32,7 +32,7 @@ export const adminOrderPromotionService = {
     endDate: string;
     status?: "active" | "inactive";
   }) => {
-    const response = await adminApi.post("/admin/order-promotions", data);
+    const response = await api.post("/admin/order-promotions", data);
     return response.data;
   },
 
@@ -51,7 +51,7 @@ export const adminOrderPromotionService = {
       status?: "active" | "inactive";
     },
   ) => {
-    const response = await adminApi.patch(
+    const response = await api.patch(
       `/admin/order-promotions/update/${orderPromotionId}`,
       data,
     );
@@ -59,7 +59,7 @@ export const adminOrderPromotionService = {
   },
 
   changeStatus: async (orderPromotionId: string, status: string) => {
-    const response = await adminApi.patch(
+    const response = await api.patch(
       `/admin/order-promotions/change-status/${orderPromotionId}`,
       { status },
     );
@@ -67,18 +67,15 @@ export const adminOrderPromotionService = {
   },
 
   changeMulti: async (ids: string[], type: string) => {
-    const response = await adminApi.patch(
-      "/admin/order-promotions/change-multi",
-      {
-        ids,
-        type,
-      },
-    );
+    const response = await api.patch("/admin/order-promotions/change-multi", {
+      ids,
+      type,
+    });
     return response.data;
   },
 
   deleteItem: async (orderPromotionId: string) => {
-    const response = await adminApi.patch(
+    const response = await api.patch(
       `/admin/order-promotions/delete/${orderPromotionId}`,
     );
     return response.data;

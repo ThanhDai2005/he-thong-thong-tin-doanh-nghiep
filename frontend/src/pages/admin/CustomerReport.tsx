@@ -197,14 +197,16 @@ const CustomerReport = () => {
       />
 
       <div className="p-6 md:p-8 max-w-[1600px] mx-auto space-y-6">
-        {/* TITLE */}
-        <div>
-          <h1 className="text-[24px] font-bold text-gray-900 mb-2 tracking-tight">
-            Báo cáo khách hàng
-          </h1>
-          <p className="text-sm text-gray-600">
-            Tổng quan về khách hàng, độ tuổi, sở thích và xu hướng
-          </p>
+        {/* TITLE & EXPORT */}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-[24px] font-bold text-gray-900 mb-2 tracking-tight">
+              Báo cáo khách hàng
+            </h1>
+            <p className="text-sm text-gray-600">
+              Tổng quan về khách hàng, độ tuổi, sở thích và xu hướng
+            </p>
+          </div>
         </div>
 
         {/* STAT CARDS */}
