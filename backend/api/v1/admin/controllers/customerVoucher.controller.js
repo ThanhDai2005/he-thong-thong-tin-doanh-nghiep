@@ -242,6 +242,45 @@ export const create = async (req, res) => {
   }
 };
 
+// [GET] /api/v1/admin/customer-vouchers/:promotionId/issued-customers
+// Lấy danh sách customer IDs đã nhận voucher này
+export const getIssuedCustomers = async (req, res) => {
+  try {
+    const { promotionId } = req.params;
+
+    const existedPromotion = await Promotion.findOne({
+      _id: promotionId,
+      deleted: false,
+    });
+    if (!existedPromotion) {
+      return res.status(404).json({ message: "Voucher không tồn tại" });
+    }
+
+    // Lấy danh sách customerId đã nhận voucher
+    const issuedVouchers = await CustomerVoucher.find({
+      promotionId,
+    })
+      .select("customerId")
+      .lean();
+
+    const issuedCustomerIds = issuedVouchers.map((v) =>
+      v.customerId.toString(),
+    );
+
+    res.status(200).json({
+      message: "Lấy danh sách khách hàng đã nhận voucher thành công",
+      data: issuedCustomerIds,
+    });
+  } catch (error) {
+    logger.logError("Lỗi khi gọi getIssuedCustomers", error, {
+      adminId: req.user?._id,
+      promotionId: req.params?.promotionId,
+      endpoint: req.originalUrl,
+    });
+    res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
 // [POST] /api/v1/admin/customer-vouchers/issue/:promotionId
 // Phát thêm voucher cho khách hàng
 export const issueVoucher = async (req, res) => {

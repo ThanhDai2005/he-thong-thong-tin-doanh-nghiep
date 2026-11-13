@@ -8,6 +8,50 @@ export const useAdminSurveyStore = create<AdminSurveyState>((set) => ({
   currentSurvey: null,
   totalPages: 1,
   loading: false,
+  recipients: [],
+  recipientsTotalPages: 1,
+  recipientsLoading: false,
+  sending: false,
+
+  fetchRecipients: async (keyword = "", page = 1, limit = 10) => {
+    try {
+      set({ recipientsLoading: true });
+      const response = await adminSurveyService.getRecipients(keyword, page, limit);
+      set({
+        recipients: response.data,
+        recipientsTotalPages: response.totalPages,
+        recipientsLoading: false,
+      });
+    } catch (error) {
+      console.error("Lỗi khi tải người nhận khảo sát:", error);
+      toast.error("Không thể tải danh sách người nhận");
+      set({ recipients: [], recipientsTotalPages: 1, recipientsLoading: false });
+    }
+  },
+
+  sendSurvey: async (surveyId, customerIds) => {
+    try {
+      set({ sending: true });
+      const response = await adminSurveyService.send(surveyId, customerIds);
+      set((state) => ({
+        sending: false,
+        currentSurvey:
+          state.currentSurvey?._id === surveyId
+            ? {
+                ...state.currentSurvey,
+                recipientCount: response.data.recipientCount,
+                recipientIds: response.data.recipientIds,
+              }
+            : state.currentSurvey,
+      }));
+      toast.success(response.message);
+    } catch (error) {
+      console.error("Lỗi khi gửi khảo sát:", error);
+      set({ sending: false });
+      toast.error("Không thể gửi khảo sát");
+      throw error;
+    }
+  },
 
   fetchSurveys: async (keyword = "", status = "", page = 1, limit = 10) => {
     try {
@@ -31,12 +75,14 @@ export const useAdminSurveyStore = create<AdminSurveyState>((set) => ({
 
   getSurveyDetail: async (surveyId) => {
     try {
+      set({ loading: true, currentSurvey: null });
       const response = await adminSurveyService.getDetail(surveyId);
-      set({ currentSurvey: response.data });
+      set({ currentSurvey: response.data, loading: false });
       return response.data;
     } catch (error) {
       console.error("Lỗi khi tải chi tiết khảo sát:", error);
       toast.error("Không thể tải thông tin khảo sát");
+      set({ loading: false });
       throw error;
     }
   },
@@ -44,9 +90,10 @@ export const useAdminSurveyStore = create<AdminSurveyState>((set) => ({
   createSurvey: async (data) => {
     try {
       set({ loading: true });
-      await adminSurveyService.create(data);
+      const response = await adminSurveyService.create(data);
       toast.success("Tạo khảo sát thành công");
       set({ loading: false });
+      return response.data;
     } catch (error) {
       console.error("Lỗi khi tạo khảo sát:", error);
       toast.error("Không thể tạo khảo sát");

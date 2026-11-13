@@ -48,6 +48,7 @@ import SurveyCreate from "@/pages/admin/SurveyCreate";
 import SurveyEdit from "@/pages/admin/SurveyEdit";
 import SurveyDetail from "@/pages/admin/SurveyDetail";
 import CustomerReport from "@/pages/admin/CustomerReport";
+import StatisticPage from "@/pages/admin/StatisticPage";
 
 const adminRoute = {
   path: "/admin",
@@ -191,10 +192,6 @@ const adminRoute = {
               element: <CustomerEdit />,
             },
             {
-              path: "customer-reports",
-              element: <CustomerReport />,
-            },
-            {
               path: "staffs",
               element: <StaffManagement />,
             },
@@ -249,6 +246,10 @@ const adminRoute = {
             {
               path: "survey/:surveyId",
               element: <SurveyDetail />,
+            },
+            {
+              path: "statistics",
+              element: <StatisticPage />,
             },
             {
               path: "customer-report",

@@ -63,6 +63,38 @@ const CartPage = () => {
     }
   }, [cart?.items?.length, getAvailablePromotions]);
 
+  // Validate appliedPromotion: nếu không còn trong availablePromotions → auto clear
+  useEffect(() => {
+    if (!appliedPromotion || !availablePromotions) return;
+
+    const allAvailable = [
+      ...(availablePromotions.orderPromotions || []),
+      ...(availablePromotions.customerVouchers || []),
+    ];
+
+    let stillValid = false;
+
+    if (appliedPromotion.type === "orderPromotion") {
+      stillValid = allAvailable.some(
+        (p) =>
+          p.type === "orderPromotion" &&
+          p.orderPromotionId === appliedPromotion.orderPromotionId,
+      );
+    } else if (appliedPromotion.type === "customerVoucher") {
+      stillValid = allAvailable.some(
+        (p) =>
+          p.type === "customerVoucher" &&
+          p.voucherId === appliedPromotion.customerVoucherId,
+      );
+    }
+
+    if (!stillValid) {
+      clearPromotion();
+      setPromoCode("");
+      toast.info("Mã khuyến mãi đã ngưng áp dụng hoặc không còn hợp lệ");
+    }
+  }, [availablePromotions, appliedPromotion, clearPromotion]);
+
   // Auto-apply từ VoucherPage: chờ list available xong, ghi đè mã cũ
   useEffect(() => {
     const autoCode = localStorage.getItem("autoApplyPromoCode");

@@ -485,15 +485,15 @@ const OrderDetailDrawer = ({
                         className="w-14 h-14 rounded-lg object-cover border bg-gray-50"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm text-gray-900 line-clamp-2">
+                        <p className="font-semibold text-base text-gray-900 line-clamp-2">
                           {item.productId?.name || "N/A"}
                         </p>
-                        <p className="text-xs text-gray-500 mt-0.5">
+                        <p className="text-sm text-gray-800 font-semibold mt-0.5">
                           SL: {item.quantity} ·{" "}
                           {item.price.toLocaleString("vi-VN")}₫
                         </p>
                       </div>
-                      <p className="text-sm font-bold text-[#b51c00] whitespace-nowrap">
+                      <p className="text-base font-bold text-[#b51c00] whitespace-nowrap">
                         {(item.price * item.quantity).toLocaleString("vi-VN")}₫
                       </p>
                     </div>
@@ -532,7 +532,7 @@ const OrderDetailDrawer = ({
                   )}
                   <Separator />
                   <div className="flex justify-between font-bold">
-                    <span>Tổng</span>
+                    <span className="text-base">Tổng</span>
                     <span className="text-[#b51c00] text-base">
                       {currentOrder.totalAmount.toLocaleString("vi-VN")}₫
                     </span>

@@ -115,12 +115,10 @@ const CustomerEdit = () => {
         updateData.password = data.password;
       }
 
-      await updateCustomer(customerId, payload);
+      await updateCustomer(customerId, updateData);
       navigate("/admin/customers");
     } catch (error: any) {
-      if (error?.response?.data?.message) {
-        toast.error(error.response.data.message);
-      }
+      toast.error(error?.response?.data?.message);
     }
   };
 

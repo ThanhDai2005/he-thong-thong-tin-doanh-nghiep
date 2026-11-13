@@ -51,13 +51,6 @@ export const list = async (req, res) => {
 
       // ✅ Lưu TOÀN BỘ danh sách vào RAM (TTL: 10 phút)
       setCachedSearch(ALL_PRODUCTS_CACHE_KEY, allProducts, 600);
-      logger.info(
-        `[CACHE SET] ALL_ACTIVE_PRODUCTS - Đã lưu ${allProducts.length} sản phẩm vào RAM`,
-      );
-    } else {
-      logger.info(
-        `[CACHE HIT] ALL_ACTIVE_PRODUCTS - Tái sử dụng ${allProducts.length} sản phẩm từ RAM`,
-      );
     }
 
     // ✅ Bước 3: LỌC TRONG RAM bằng JavaScript (KHÔNG query DB nữa)

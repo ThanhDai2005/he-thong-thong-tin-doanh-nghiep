@@ -405,6 +405,12 @@ export const getPermissions = async (req, res) => {
         value: "surveys_edit",
         label: "Đóng / Mở khảo sát",
       },
+
+      {
+        group: "Thống kê & Báo cáo",
+        value: "statistics_view",
+        label: "Xem báo cáo & thống kê hệ thống",
+      },
     ];
 
     res.status(200).json({

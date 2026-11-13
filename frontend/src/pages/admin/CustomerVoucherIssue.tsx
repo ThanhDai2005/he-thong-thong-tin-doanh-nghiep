@@ -4,7 +4,15 @@ import { useAdminCustomerVoucherStore } from "@/stores/useAdminCustomerVoucherSt
 import { useAdminCustomerStore } from "@/stores/useAdminCustomerStore";
 import { useAdminAuthStore } from "@/stores/useAdminAuthStore";
 import { hasPermission } from "@/lib/permissions";
-import { Gift, Users, Tag, Loader2 } from "lucide-react";
+import {
+  Gift,
+  Users,
+  Tag,
+  Loader2,
+  CheckSquare,
+  Square,
+  AlertCircle,
+} from "lucide-react";
 import AdminHeader from "@/components/admin/AdminHeader";
 import AdminPageHeading from "@/components/admin/AdminPageHeading";
 import AdminFormActions from "@/components/admin/AdminFormActions";
@@ -15,8 +23,14 @@ const CustomerVoucherIssue = () => {
   const navigate = useNavigate();
   const { promotionId } = useParams<{ promotionId: string }>();
   const { user } = useAdminAuthStore();
-  const { loading, issueVoucher, getDetail, currentCustomerVoucher } =
-    useAdminCustomerVoucherStore();
+  const {
+    loading,
+    issueVoucher,
+    getDetail,
+    currentCustomerVoucher,
+    fetchIssuedCustomers,
+    issuedCustomerIds,
+  } = useAdminCustomerVoucherStore();
   const {
     customers,
     fetchCustomers,
@@ -31,8 +45,14 @@ const CustomerVoucherIssue = () => {
 
   useEffect(() => {
     const loadData = async () => {
+      if (!promotionId) {
+        navigate("/admin/customer-vouchers");
+        return;
+      }
+
       try {
         await getDetail(promotionId);
+        await fetchIssuedCustomers(promotionId);
         setDetailLoading(false);
       } catch (error) {
         setDetailLoading(false);
@@ -62,25 +82,34 @@ const CustomerVoucherIssue = () => {
 
     try {
       await issueVoucher(promotionId, selectedCustomers);
+      setSelectedCustomers([]);
       navigate("/admin/customer-vouchers");
     } catch (error) {
       // Error already handled in store
     }
   };
 
-  const handleToggleCustomer = (customerId: string) => {
-    if (selectedCustomers.includes(customerId)) {
-      setSelectedCustomers(selectedCustomers.filter((id) => id !== customerId));
+  const handleToggleCustomer = (userId: string, customerId: string | null) => {
+    const isAlreadyIssued =
+      customerId && issuedCustomerIds.includes(customerId);
+    if (isAlreadyIssued) return; // Không cho phép chọn khách hàng đã nhận voucher
+
+    if (selectedCustomers.includes(userId)) {
+      setSelectedCustomers(selectedCustomers.filter((id) => id !== userId));
     } else {
-      setSelectedCustomers([...selectedCustomers, customerId]);
+      setSelectedCustomers([...selectedCustomers, userId]);
     }
   };
 
   const handleSelectAll = () => {
-    if (selectedCustomers.length === customers.length) {
+    const selectableCustomers = customers
+      .filter((c) => !c.customerId || !issuedCustomerIds.includes(c.customerId))
+      .map((c) => c._id);
+
+    if (selectedCustomers.length === selectableCustomers.length) {
       setSelectedCustomers([]);
     } else {
-      setSelectedCustomers(customers.map((c) => c._id));
+      setSelectedCustomers(selectableCustomers);
     }
   };
 
@@ -164,6 +193,9 @@ const CustomerVoucherIssue = () => {
   }
 
   const promotion = currentCustomerVoucher.promotionId;
+  const selectableCustomers = customers.filter(
+    (c) => !c.customerId || !issuedCustomerIds.includes(c.customerId),
+  );
 
   return (
     <div className="bg-[#f7f9fb] min-h-screen pb-12">
@@ -290,7 +322,7 @@ const CustomerVoucherIssue = () => {
                   onClick={handleSelectAll}
                   className="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors whitespace-nowrap"
                 >
-                  {selectedCustomers.length === customers.length
+                  {selectedCustomers.length === selectableCustomers.length
                     ? "Bỏ chọn tất cả"
                     : "Chọn tất cả"}
                 </button>
@@ -317,27 +349,84 @@ const CustomerVoucherIssue = () => {
                   </div>
                 ) : customers.length > 0 ? (
                   <div className="divide-y divide-gray-100">
-                    {customers.map((customer) => (
-                      <label
-                        key={customer._id}
-                        className="flex items-center gap-3 p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedCustomers.includes(customer._id)}
-                          onChange={() => handleToggleCustomer(customer._id)}
-                          className="w-4 h-4 text-[#b51c00] border-gray-300 rounded focus:ring-[#b51c00] cursor-pointer"
-                        />
-                        <div className="flex-1">
-                          <div className="font-semibold text-gray-900">
-                            {customer.displayName}
+                    {customers.map((customer) => {
+                      const isAlreadyIssued =
+                        customer.customerId &&
+                        issuedCustomerIds.includes(customer.customerId);
+                      const isSelected = selectedCustomers.includes(
+                        customer._id,
+                      );
+
+                      return (
+                        <div
+                          key={customer._id}
+                          onClick={() =>
+                            handleToggleCustomer(
+                              customer._id,
+                              customer.customerId || null,
+                            )
+                          }
+                          className={`flex items-center gap-3 p-4 cursor-pointer transition-all ${
+                            isAlreadyIssued
+                              ? "bg-gray-50 opacity-60 cursor-not-allowed"
+                              : isSelected
+                                ? "bg-purple-50 hover:bg-purple-100"
+                                : "hover:bg-gray-50"
+                          }`}
+                        >
+                          {/* Checkbox */}
+                          <div className="flex-shrink-0">
+                            {isAlreadyIssued ? (
+                              <div className="w-5 h-5 rounded border-2 border-gray-300 bg-gray-300 flex items-center justify-center">
+                                <CheckSquare className="w-4 h-4 text-white" />
+                              </div>
+                            ) : isSelected ? (
+                              <div className="w-5 h-5 rounded border-2 border-purple-600 bg-purple-600 flex items-center justify-center">
+                                <CheckSquare className="w-4 h-4 text-white" />
+                              </div>
+                            ) : (
+                              <Square className="w-5 h-5 text-gray-400" />
+                            )}
                           </div>
-                          <div className="text-sm text-gray-500">
-                            {customer.phone} • {customer.email}
+
+                          {/* Avatar */}
+                          <div className="relative size-10 shrink-0 overflow-hidden rounded-full bg-slate-200 flex items-center justify-center text-slate-700 font-bold">
+                            <span>
+                              {customer.displayName?.trim()[0]?.toUpperCase() ||
+                                "?"}
+                            </span>
+                            {customer.avatarUrl && (
+                              <img
+                                key={customer.avatarUrl}
+                                src={customer.avatarUrl}
+                                alt={customer.displayName || "Kh?ch h?ng"}
+                                className="absolute inset-0 size-full object-cover bg-slate-100"
+                                onError={(event) => {
+                                  event.currentTarget.style.display = "none";
+                                }}
+                              />
+                            )}
+                          </div>
+
+                          {/* Customer Info */}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-semibold text-gray-900">
+                                {customer.displayName}
+                              </h4>
+                              {isAlreadyIssued && (
+                                <span className="px-2 py-0.5 bg-gray-300 text-gray-700 rounded text-xs font-semibold">
+                                  Đã phát
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {customer.phone} • {customer.email}
+                            </div>
                           </div>
                         </div>
-                      </label>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="p-8 text-center text-gray-500">
@@ -346,11 +435,12 @@ const CustomerVoucherIssue = () => {
                 )}
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-blue-900">
-                  <span className="font-semibold">Lưu ý:</span> Hệ thống sẽ tự
-                  động bỏ qua các khách hàng đã nhận voucher này trước đó để
-                  tránh trùng lặp.
+                  <span className="font-semibold">Lưu ý:</span> Khách hàng đã
+                  nhận voucher này sẽ hiển thị với badge "Đã phát" và không thể
+                  chọn lại để tránh trùng lặp.
                 </p>
               </div>
             </div>

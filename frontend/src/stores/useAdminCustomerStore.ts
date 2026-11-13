@@ -6,7 +6,6 @@ import { toast } from "sonner";
 export const useAdminCustomerStore = create<AdminCustomerStore>((set) => ({
   customers: [],
   currentCustomer: null,
-  report: null,
   totalPages: 1,
   loading: false,
 
@@ -114,20 +113,6 @@ export const useAdminCustomerStore = create<AdminCustomerStore>((set) => ({
     } catch (error) {
       console.error("Lỗi khi xóa khách hàng:", error);
       toast.error("Xóa khách hàng thất bại");
-      set({ loading: false });
-      throw error;
-    }
-  },
-
-  fetchReport: async () => {
-    try {
-      set({ loading: true });
-      const response = await adminCustomerService.getReport();
-      set({ report: response.data, loading: false });
-      return response.data;
-    } catch (error) {
-      console.error("Lỗi khi tải báo cáo khách hàng:", error);
-      toast.error("Không thể tải báo cáo");
       set({ loading: false });
       throw error;
     }

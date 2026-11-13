@@ -15,6 +15,15 @@ const surveySchema = new mongoose.Schema(
     title: { type: String, required: true, trim: true },
     description: { type: String, default: "" },
     questions: [surveyQuestionSchema],
+    recipientIds: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Customer",
+        },
+      ],
+      default: [],
+    },
     status: {
       type: String,
       enum: ["active", "inactive"],
@@ -30,5 +39,6 @@ const surveySchema = new mongoose.Schema(
 );
 
 surveySchema.index({ status: 1 });
+surveySchema.index({ recipientIds: 1, status: 1, createdAt: -1 });
 
 export default mongoose.model("Survey", surveySchema, "surveys");

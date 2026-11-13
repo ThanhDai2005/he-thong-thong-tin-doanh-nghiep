@@ -18,10 +18,10 @@ const SurveyPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h1 className="text-4xl font-bold text-slate-900 mb-4">
-              Khảo sát khách hàng
+              Khảo sát dành cho bạn
             </h1>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-              Chia sẻ ý kiến của bạn để giúp chúng tôi cải thiện dịch vụ tốt hơn
+              Những khảo sát được gửi riêng đến tài khoản của bạn. Chia sẻ ý kiến để giúp chúng tôi cải thiện dịch vụ.
             </p>
           </div>
 
@@ -71,7 +71,7 @@ const SurveyPage = () => {
                         {new Date(survey.createdAt).toLocaleDateString("vi-VN")}
                       </div>
                       <button className="flex items-center gap-1 text-sm font-medium text-blue-600 group-hover:gap-2 transition-all">
-                        Tham gia
+                        {survey.hasResponded ? "Đã trả lời" : "Tham gia"}
                         <ChevronRight className="w-4 h-4" />
                       </button>
                     </div>
@@ -108,7 +108,7 @@ const SurveyPage = () => {
             <div className="text-center py-16">
               <MessageSquareText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
               <p className="text-slate-500 text-lg">
-                Hiện chưa có khảo sát nào
+                Bạn chưa nhận được khảo sát nào đang mở
               </p>
             </div>
           )}

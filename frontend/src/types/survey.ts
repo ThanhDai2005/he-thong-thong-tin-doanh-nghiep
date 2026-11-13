@@ -12,6 +12,8 @@ export interface Survey {
     };
   };
   responseCount?: number;
+  recipientIds?: string[];
+  recipientCount?: number;
   hasResponded?: boolean;
   createdAt: string;
   updatedAt: string;
@@ -30,6 +32,11 @@ export interface SurveyAnswer {
   textAnswer?: string;
 }
 
+export interface SurveyRecipient {
+  _id: string;
+  userId: { _id: string; displayName: string; email: string; phone: string; avatarUrl?: string };
+}
+
 export interface SurveyResponse {
   _id: string;
   surveyId: string | Survey;
@@ -43,6 +50,9 @@ export interface SurveyStatistics {
   surveyId: string;
   title: string;
   totalResponses: number;
+  totalCustomers: number;
+  completedRecipients: number;
+  completionRate: string;
   questionStats: QuestionStatistics[];
 }
 

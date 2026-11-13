@@ -19,7 +19,7 @@ import type { Socket } from "socket.io-client";
 import type { Conversation, Message } from "./chat";
 import type { Supplier } from "./supplier";
 import type { StockReceipt, StockReceiptItem } from "./stockReceipt";
-import type { Survey } from "./survey";
+import type { Survey, SurveyRecipient } from "./survey";
 
 export interface AuthState {
   accessToken: string | null;
@@ -281,6 +281,18 @@ export interface AdminDashboardState {
       month: string;
       revenue: number;
     }>;
+    revenueByQuarter?: Array<{
+      quarter: string;
+      revenue: number;
+      cost: number;
+      profit: number;
+    }>;
+    revenueByYear?: Array<{
+      year: string;
+      revenue: number;
+      cost: number;
+      profit: number;
+    }>;
     recentOrders: Array<{
       _id: string;
       customerId?: {
@@ -298,51 +310,6 @@ export interface AdminDashboardState {
       sold: number;
       revenue: number;
     }>;
-    revenueByMonth?: Array<{
-      month: string;
-      revenue: number;
-      cost: number;
-      profit: number;
-    }>;
-    revenueByQuarter?: Array<{
-      quarter: string;
-      revenue: number;
-      cost: number;
-      profit: number;
-    }>;
-    revenueByYear?: Array<{
-      year: string;
-      revenue: number;
-      cost: number;
-      profit: number;
-    }>;
-    revenueByStaff?: Array<{
-      staffId: string;
-      staffName: string;
-      years: Record<number, number>;
-    }>;
-    orderStatusPercentage?: {
-      pending: string;
-      processing: string;
-      shipped: string;
-      delivered: string;
-      cancelled: string;
-    };
-    revenueByProductQuarter?: Array<{
-      productId: string;
-      productName: string;
-      quarters: Record<string, number>;
-    }>;
-    revenueByCustomerYear?: Array<{
-      customerId: string;
-      customerName: string;
-      years: Record<number, number>;
-    }>;
-    revenueByCustomerQuarter?: Array<{
-      customerId: string;
-      customerName: string;
-      quarters: Record<string, number>;
-    }>;
   };
   loading: boolean;
 
@@ -350,7 +317,6 @@ export interface AdminDashboardState {
     startDate?: string,
     endDate?: string,
     month?: string,
-    customerYear?: number,
   ) => Promise<void>;
 }
 
@@ -641,6 +607,7 @@ export interface AdminCustomerVoucherStore {
     totalIssued: number;
     totalUsed: number;
   } | null;
+  issuedCustomerIds: string[];
   loading: boolean;
   totalPages: number;
 
@@ -664,6 +631,7 @@ export interface AdminCustomerVoucherStore {
     customerIds: string[];
   }) => Promise<void>;
   issueVoucher: (promotionId: string, customerIds: string[]) => Promise<void>;
+  fetchIssuedCustomers: (promotionId: string) => Promise<void>;
 }
 
 export interface AdminStaffStore {
@@ -710,26 +678,6 @@ export interface AdminStaffStore {
 export interface AdminCustomerStore {
   customers: User[];
   currentCustomer: User | null;
-  report: {
-    summary: {
-      totalCustomers: number;
-      activeCount: number;
-      inactiveCount: number;
-      newCustomersLast30Days: number;
-      totalOrders: number;
-      totalRevenue: number;
-    };
-    ageDistribution: Record<string, number>;
-    monthlyRegistrations: Record<string, number>;
-    topProducts: Array<{
-      productId: string;
-      name: string;
-      thumbnail: string;
-      category: string;
-      orderCount: number;
-      totalQuantity: number;
-    }>;
-  } | null;
   loading: boolean;
   totalPages: number;
 
@@ -765,7 +713,6 @@ export interface AdminCustomerStore {
     type: "active" | "inactive" | "delete-all",
   ) => Promise<void>;
   deleteItem: (customerId: string) => Promise<void>;
-  fetchReport: () => Promise<any>;
 }
 
 export interface RoleStore {
@@ -946,6 +893,12 @@ export interface AdminSurveyState {
   currentSurvey: Survey | null;
   totalPages: number;
   loading: boolean;
+  recipients: SurveyRecipient[];
+  recipientsTotalPages: number;
+  recipientsLoading: boolean;
+  sending: boolean;
+  fetchRecipients: (keyword?: string, page?: number, limit?: number) => Promise<void>;
+  sendSurvey: (surveyId: string, customerIds: string[]) => Promise<void>;
 
   fetchSurveys: (
     keyword?: string,
@@ -953,7 +906,7 @@ export interface AdminSurveyState {
     page?: number,
     limit?: number,
   ) => Promise<void>;
-  getSurveyDetail: (surveyId: string) => Promise<void>;
+  getSurveyDetail: (surveyId: string) => Promise<Survey>;
   createSurvey: (data: {
     title: string;
     description?: string;
@@ -962,6 +915,12 @@ export interface AdminSurveyState {
       type: "single_choice" | "text";
       options?: string[];
     }>;
+    status?: "active" | "inactive";
+  }) => Promise<Survey>;
+  updateSurvey: (surveyId: string, data: {
+    title: string;
+    description?: string;
+    questions: Array<{ questionText: string; type: "single_choice" | "text"; options?: string[] }>;
     status?: "active" | "inactive";
   }) => Promise<void>;
   changeStatus: (
@@ -983,6 +942,7 @@ export interface SurveyState {
     title: string;
     description: string;
     createdAt: string;
+    hasResponded?: boolean;
   }>;
   currentSurvey: Survey | null;
   totalPages: number;
@@ -1025,4 +985,76 @@ export interface AdminReviewStore {
   deleteReply: (reviewId: string) => Promise<void>;
   toggleHidden: (reviewId: string) => Promise<void>;
   clearCurrentReview: () => void;
+}
+
+export interface AdminStatisticState {
+  stats: {
+    revenueByMonth?: Array<{
+      month: string;
+      revenue: number;
+      cost: number;
+      profit: number;
+    }>;
+    revenueByQuarter?: Array<{
+      quarter: string;
+      revenue: number;
+      cost: number;
+      profit: number;
+    }>;
+    revenueByYear?: Array<{
+      year: string;
+      revenue: number;
+      cost: number;
+      profit: number;
+    }>;
+    revenueByStaff?: Array<{
+      staffId: string;
+      staffName: string;
+      years: Record<number, number>;
+    }>;
+    revenueByProductQuarter?: Array<{
+      productId: string;
+      productName: string;
+      quarters: Record<string, number>;
+    }>;
+    revenueByCustomerYear?: Array<{
+      customerId: string;
+      customerName: string;
+      years: Record<number, number>;
+    }>;
+    revenueByCustomerQuarter?: Array<{
+      customerId: string;
+      customerName: string;
+      quarters: Record<string, number>;
+    }>;
+  };
+  customerReport: {
+    summary: {
+      totalCustomers: number;
+      activeCount: number;
+      inactiveCount: number;
+      newCustomersLast30Days: number;
+      totalOrders: number;
+      totalRevenue: number;
+    };
+    ageDistribution: Record<string, number>;
+    monthlyRegistrations: Record<string, number>;
+    topProducts: Array<{
+      productId: string;
+      name: string;
+      thumbnail: string;
+      category: string;
+      orderCount: number;
+      totalQuantity: number;
+    }>;
+  } | null;
+  loading: boolean;
+
+  fetchStats: (
+    startDate?: string,
+    endDate?: string,
+    month?: string,
+    customerYear?: number,
+  ) => Promise<void>;
+  fetchCustomerReport: () => Promise<void>;
 }

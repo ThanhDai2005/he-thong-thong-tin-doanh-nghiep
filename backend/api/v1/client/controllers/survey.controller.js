@@ -1,7 +1,6 @@
 import Survey from "../../../../models/survey.model.js";
 import SurveyResponse from "../../../../models/surveyResponse.model.js";
 import Customer from "../../../../models/customer.model.js";
-import logger from "../../../../config/logger.js";
 
 // [GET] /api/v1/survey
 export const list = async (req, res) => {
@@ -10,8 +9,19 @@ export const list = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
+    const customer = await Customer.findOne({ userId: req.user._id })
+      .select("_id")
+      .lean();
+
+    if (!customer) {
+      return res.status(404).json({
+        message: "Không tìm thấy thông tin khách hàng",
+      });
+    }
+
     const filter = {
       status: "active",
+      recipientIds: customer._id,
     };
 
     const [data, totalItems] = await Promise.all([
@@ -24,9 +34,18 @@ export const list = async (req, res) => {
       Survey.countDocuments(filter),
     ]);
 
+    const respondedIds = await SurveyResponse.find({
+      customerId: customer._id,
+      surveyId: { $in: data.map((survey) => survey._id) },
+    }).distinct("surveyId");
+    const respondedSurveyIds = respondedIds.map((id) => id.toString());
+
     res.status(200).json({
       message: "Lấy danh sách khảo sát thành công",
-      data,
+      data: data.map((survey) => ({
+        ...survey,
+        hasResponded: respondedSurveyIds.includes(survey._id.toString()),
+      })),
       totalItems,
       totalPages: Math.ceil(totalItems / limit),
     });
@@ -43,34 +62,40 @@ export const detail = async (req, res) => {
   try {
     const surveyId = req.params.surveyId;
 
+    const customer = await Customer.findOne({ userId: req.user._id })
+      .select("_id")
+      .lean();
+
+    if (!customer) {
+      return res.status(404).json({
+        message: "Không tìm thấy thông tin khách hàng",
+      });
+    }
+
     const survey = await Survey.findOne({
       _id: surveyId,
       status: "active",
-    }).lean();
+      recipientIds: customer._id,
+    })
+      .select("-recipientIds")
+      .lean();
 
     if (!survey) {
       return res.status(404).json({
-        message: "Khảo sát không tồn tại hoặc đã đóng",
+        message: "Khảo sát không được gửi cho bạn hoặc đã đóng",
       });
     }
 
-    // Kiểm tra xem user đã trả lời chưa
-    const customer = await Customer.findOne({ userId: req.user._id });
-    let hasResponded = false;
-
-    if (customer) {
-      const existingResponse = await SurveyResponse.findOne({
-        surveyId,
-        customerId: customer._id,
-      });
-      hasResponded = !!existingResponse;
-    }
+    const existingResponse = await SurveyResponse.findOne({
+      surveyId,
+      customerId: customer._id,
+    });
 
     res.status(200).json({
       message: "Lấy chi tiết khảo sát thành công",
       data: {
         ...survey,
-        hasResponded,
+        hasResponded: !!existingResponse,
       },
     });
   } catch (error) {
@@ -87,22 +112,25 @@ export const submit = async (req, res) => {
     const surveyId = req.params.surveyId;
     const { answers } = req.body;
 
-    const survey = await Survey.findOne({
-      _id: surveyId,
-      status: "active",
-    });
-
-    if (!survey) {
-      return res.status(404).json({
-        message: "Khảo sát không tồn tại hoặc đã đóng",
-      });
-    }
-
-    const customer = await Customer.findOne({ userId: req.user._id });
+    const customer = await Customer.findOne({ userId: req.user._id })
+      .select("_id")
+      .lean();
 
     if (!customer) {
       return res.status(404).json({
         message: "Không tìm thấy thông tin khách hàng",
+      });
+    }
+
+    const survey = await Survey.findOne({
+      _id: surveyId,
+      status: "active",
+      recipientIds: customer._id,
+    });
+
+    if (!survey) {
+      return res.status(404).json({
+        message: "Khảo sát không được gửi cho bạn hoặc đã đóng",
       });
     }
 
@@ -118,24 +146,31 @@ export const submit = async (req, res) => {
       });
     }
 
-    // Validate answers
-    if (!answers || !Array.isArray(answers) || answers.length === 0) {
+    if (!Array.isArray(answers) || answers.length === 0) {
       return res.status(400).json({
         message: "Vui lòng trả lời ít nhất 1 câu hỏi",
       });
     }
 
-    // Validate từng câu trả lời
-    for (const answer of answers) {
-      const question = survey.questions.find(
-        (q) => q._id.toString() === answer.questionId,
+    if (answers.length !== survey.questions.length) {
+      return res.status(400).json({
+        message: "Vui lòng trả lời đầy đủ mỗi câu hỏi một lần",
+      });
+    }
+
+    // Mỗi câu hỏi phải có đúng một câu trả lời hợp lệ.
+    for (const question of survey.questions) {
+      const questionAnswers = answers.filter(
+        (answer) => answer?.questionId === question._id.toString(),
       );
 
-      if (!question) {
+      if (questionAnswers.length !== 1) {
         return res.status(400).json({
-          message: "Câu hỏi không hợp lệ",
+          message: "Vui lòng trả lời đầy đủ mỗi câu hỏi một lần",
         });
       }
+
+      const answer = questionAnswers[0];
 
       if (question.type === "single_choice") {
         if (
@@ -147,7 +182,7 @@ export const submit = async (req, res) => {
           });
         }
       } else if (question.type === "text") {
-        if (!answer.textAnswer || !answer.textAnswer.trim()) {
+        if (typeof answer.textAnswer !== "string" || !answer.textAnswer.trim()) {
           return res.status(400).json({
             message: `Vui lòng trả lời câu hỏi "${question.questionText}"`,
           });

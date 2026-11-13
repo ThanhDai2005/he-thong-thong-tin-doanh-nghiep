@@ -1,10 +1,24 @@
 import api from "@/lib/adminAxios";
 
 export const adminSurveyService = {
+  getRecipients: async (keyword = "", page = 1, limit = 10) => {
+    const response = await api.get("/admin/survey/recipients", {
+      params: { keyword, page, limit },
+    });
+    return response.data;
+  },
+
+  send: async (surveyId: string, customerIds: string[]) => {
+    const response = await api.post(`/admin/survey/${surveyId}/send`, {
+      customerIds,
+    });
+    return response.data;
+  },
+
   getList: async (keyword = "", status = "", page = 1, limit = 10) => {
-    const response = await api.get(
-      `/admin/survey?keyword=${keyword}&status=${status}&page=${page}&limit=${limit}`,
-    );
+    const response = await api.get("/admin/survey", {
+      params: { keyword, status, page, limit },
+    });
     return response.data;
   },
 
@@ -53,9 +67,9 @@ export const adminSurveyService = {
   },
 
   getResponses: async (surveyId: string, page = 1, limit = 20) => {
-    const response = await api.get(
-      `/admin/survey/${surveyId}/responses?page=${page}&limit=${limit}`,
-    );
+    const response = await api.get(`/admin/survey/${surveyId}/responses`, {
+      params: { page, limit },
+    });
     return response.data;
   },
 

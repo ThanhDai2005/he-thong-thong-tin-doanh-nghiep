@@ -31,6 +31,7 @@ dist-ssr
 
 # Claude & AI Agents tools (Chặn thư mục ẩn của AI)
 .claude/
+.codex/
 .codegraph/
 
 # Chặn toàn bộ các file báo cáo .md do AI tự sinh ở thư mục gốc

@@ -7,6 +7,7 @@ export const useAdminCustomerVoucherStore = create<AdminCustomerVoucherStore>(
   (set) => ({
     customerVouchers: [],
     currentCustomerVoucher: null,
+    issuedCustomerIds: [],
     loading: false,
     totalPages: 1,
 
@@ -71,12 +72,28 @@ export const useAdminCustomerVoucherStore = create<AdminCustomerVoucherStore>(
           promotionId,
           customerIds,
         );
-        set({ loading: false });
         toast.success(response.message || "Phát voucher thành công");
+        const issuedResponse =
+          await adminCustomerVoucherService.getIssuedCustomers(promotionId);
+        set({ issuedCustomerIds: issuedResponse.data, loading: false });
       } catch (error) {
         console.error("Lỗi khi phát voucher:", error);
         set({ loading: false });
         toast.error(error?.response?.data?.message || "Phát voucher thất bại");
+        throw error;
+      }
+    },
+
+    fetchIssuedCustomers: async (promotionId: string) => {
+      try {
+        const response =
+          await adminCustomerVoucherService.getIssuedCustomers(promotionId);
+        set({ issuedCustomerIds: response.data });
+      } catch (error) {
+        console.error(
+          "Lỗi khi tải danh sách khách hàng đã nhận voucher:",
+          error,
+        );
         throw error;
       }
     },

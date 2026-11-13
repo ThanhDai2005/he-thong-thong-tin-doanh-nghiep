@@ -7,12 +7,6 @@ import { requirePermission } from "../middlewares/permission.middleware.js";
 router.get("/", requirePermission("customers_view"), controller.list);
 
 router.get(
-  "/customer-report",
-  requirePermission("customers_view"),
-  controller.report,
-);
-
-router.get(
   "/:customerId",
   requirePermission("customers_view"),
   controller.detail,

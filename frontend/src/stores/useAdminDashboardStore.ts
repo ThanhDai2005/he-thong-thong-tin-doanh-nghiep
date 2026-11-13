@@ -24,17 +24,18 @@ export const useAdminDashboardStore = create<AdminDashboardState>((set) => ({
     monthlyRevenue: [],
     recentOrders: [],
     topProducts: [],
+    revenueByQuarter: [],
+    revenueByYear: [],
   },
   loading: false,
 
-  fetchStats: async (startDate, endDate, month, customerYear) => {
+  fetchStats: async (startDate, endDate, month) => {
     try {
       set({ loading: true });
       const response = await adminDashboardService.getStats(
         startDate,
         endDate,
         month,
-        customerYear
       );
 
       set((state) => ({

@@ -123,7 +123,7 @@ const SurveyCreate = () => {
     }
 
     try {
-      await createSurvey({
+      const survey = await createSurvey({
         title: title.trim(),
         description: description.trim(),
         questions: questions.map((q) => ({
@@ -137,7 +137,7 @@ const SurveyCreate = () => {
         status,
       });
 
-      navigate("/admin/surveys");
+      navigate(`/admin/survey/${survey._id}`);
     } catch {
       // Error handled in store
     }
@@ -170,7 +170,7 @@ const SurveyCreate = () => {
           <div className="mb-6">
             <AdminPageHeading
               title="Tạo khảo sát mới"
-              subtitle="Tạo khảo sát để thu thập ý kiến và phản hồi từ khách hàng"
+              subtitle="Tạo nội dung khảo sát, sau đó chọn tài khoản khách hàng để gửi tại trang chi tiết."
             />
           </div>
 
@@ -230,7 +230,7 @@ const SurveyCreate = () => {
                     }
                     className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer bg-white"
                   >
-                    <option value="active">Hoạt động (hiển thị ngay)</option>
+                    <option value="active">Hoạt động (chỉ người được gửi mới thấy)</option>
                     <option value="inactive">Đã đóng (ẩn khảo sát)</option>
                   </select>
                 </div>

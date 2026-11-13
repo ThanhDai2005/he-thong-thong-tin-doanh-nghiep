@@ -38,7 +38,7 @@ const SurveyDetailPage = () => {
     clearCurrentSurvey();
 
     if (surveyId) {
-      getSurveyDetail(surveyId);
+      void getSurveyDetail(surveyId).catch(() => navigate("/surveys", { replace: true }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [surveyId]);

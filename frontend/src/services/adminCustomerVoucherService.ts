@@ -41,4 +41,11 @@ export const adminCustomerVoucherService = {
     );
     return response.data;
   },
+
+  getIssuedCustomers: async (promotionId: string) => {
+    const response = await api.get(
+      `/admin/customer-vouchers/${promotionId}/issued-customers`,
+    );
+    return response.data;
+  },
 };

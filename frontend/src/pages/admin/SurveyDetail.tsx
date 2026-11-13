@@ -29,6 +29,7 @@ import { toast } from "sonner";
 import AdminHeader from "@/components/admin/AdminHeader";
 import AdminPageHeading from "@/components/admin/AdminPageHeading";
 import NoPermissionScreen from "@/components/admin/NoPermissionScreen";
+import SurveyRecipients from "@/components/admin/SurveyRecipients";
 
 // Màu sắc chuyên nghiệp cho CRM/Analytics Dashboard
 const COLORS = [
@@ -46,12 +47,8 @@ const SurveyDetail = () => {
   const { surveyId } = useParams<{ surveyId: string }>();
   const navigate = useNavigate();
   const { user } = useAdminAuthStore();
-  const {
-    currentSurvey,
-    getSurveyDetail,
-    getStatistics,
-    getResponses,
-  } = useAdminSurveyStore();
+  const { currentSurvey, getSurveyDetail, getStatistics, getResponses } =
+    useAdminSurveyStore();
 
   const [statistics, setStatistics] = useState<any>(null);
   const [responses, setResponses] = useState<any[]>([]);
@@ -201,7 +198,7 @@ const SurveyDetail = () => {
 
   // Tỷ lệ hoàn thành từ backend
   const completionRate = statistics?.completionRate || "0.0";
-  const totalCustomers = statistics?.totalCustomers || 0;
+  const totalCustomers = currentSurvey.recipientCount || 0;
 
   const canEditSurvey =
     canEdit &&
@@ -212,6 +209,18 @@ const SurveyDetail = () => {
       <AdminHeader items={breadcrumbItems} />
 
       <div className="p-6 space-y-6">
+        {canEdit && (
+          <SurveyRecipients
+            key={currentSurvey._id}
+            survey={currentSurvey}
+            onSent={() => {
+              if (surveyId)
+                void getStatistics(surveyId)
+                  .then(setStatistics)
+                  .catch(() => {});
+            }}
+          />
+        )}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <AdminPageHeading
             title={currentSurvey.title}
@@ -331,9 +340,11 @@ const SurveyDetail = () => {
               </div>
             </div>
             <p className="text-violet-50 text-sm font-semibold tracking-wide uppercase">
-              Tổng khách hàng
+              Khách hàng đã nhận
             </p>
-            <p className="text-violet-100/80 text-xs mt-1">Trong hệ thống</p>
+            <p className="text-violet-100/80 text-xs mt-1">
+              Được chọn nhận khảo sát này
+            </p>
           </div>
 
           {/* Card 3: Tỷ lệ hoàn thành - Emerald (Success & Growth) */}
@@ -353,7 +364,8 @@ const SurveyDetail = () => {
               Tỷ lệ hoàn thành
             </p>
             <p className="text-emerald-100/80 text-xs mt-1">
-              {statistics?.totalResponses || 0}/{totalCustomers} đã tham gia
+              {statistics?.completedRecipients || 0}/{totalCustomers} đã tham
+              gia
             </p>
           </div>
         </div>

@@ -5,7 +5,6 @@ export const adminDashboardService = {
     startDate?: string,
     endDate?: string,
     month?: string,
-    customerYear?: number
   ) => {
     const params = new URLSearchParams();
 
@@ -16,10 +15,6 @@ export const adminDashboardService = {
 
     if (month !== undefined) {
       params.append("month", month);
-    }
-
-    if (customerYear) {
-      params.append("customerYear", customerYear.toString());
     }
 
     const url = `/admin/dashboard${params.toString() ? `?${params.toString()}` : ""}`;

@@ -68,9 +68,4 @@ export const adminCustomerService = {
     );
     return response.data;
   },
-
-  getReport: async () => {
-    const response = await adminAxios.get("/admin/customer/customer-report");
-    return response.data;
-  },
 };

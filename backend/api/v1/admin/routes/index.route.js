@@ -18,6 +18,7 @@ import supplierRoute from "./supplier.route.js";
 import stockReceiptRoute from "./stockReceipt.route.js";
 import reviewRoute from "./review.route.js";
 import surveyRoute from "./survey.route.js";
+import statisticRoute from "./statistic.route.js";
 import exportRoute from "./export.route.js";
 
 export const adminV1Routes = (app) => {
@@ -60,6 +61,8 @@ export const adminV1Routes = (app) => {
   app.use(version + "/review", requireAuth, reviewRoute);
 
   app.use(version + "/survey", requireAuth, surveyRoute);
+
+  app.use(version + "/statistic", requireAuth, statisticRoute);
 
   app.use(version + "/export", requireAuth, exportRoute);
 };

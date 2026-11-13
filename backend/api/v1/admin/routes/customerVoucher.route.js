@@ -19,6 +19,12 @@ router.post(
 );
 
 router.get(
+  "/:promotionId/issued-customers",
+  requirePermission("customer_vouchers_view"),
+  controller.getIssuedCustomers,
+);
+
+router.get(
   "/:promotionId",
   requirePermission("customer_vouchers_view"),
   controller.detail,

@@ -1,6 +1,114 @@
 import Survey from "../../../../models/survey.model.js";
 import SurveyResponse from "../../../../models/surveyResponse.model.js";
-import logger from "../../../../config/logger.js";
+import Customer from "../../../../models/customer.model.js";
+import User from "../../../../models/user.model.js";
+
+// [GET] /api/v1/admin/survey/recipients
+export const recipients = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const keyword = req.query.keyword || "";
+    const userFilter = { deleted: false, status: "active" };
+    if (keyword) {
+      const pattern = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      userFilter.$or = [
+        { displayName: { $regex: pattern, $options: "i" } },
+        { email: { $regex: pattern, $options: "i" } },
+        { phone: { $regex: pattern, $options: "i" } },
+      ];
+    }
+    const userIds = await User.find(userFilter).distinct("_id");
+    const filter = { userId: { $in: userIds } };
+    const [data, totalItems] = await Promise.all([
+      Customer.find(filter)
+        .select("userId")
+        .populate("userId", "displayName email phone avatarUrl")
+        .sort({ _id: 1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Customer.countDocuments(filter),
+    ]);
+    res.status(200).json({
+      message: "Lấy danh sách người nhận thành công",
+      data,
+      totalItems,
+      totalPages: Math.ceil(totalItems / limit),
+    });
+  } catch (error) {
+    console.log("Lỗi khi gọi recipients survey", error);
+    res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+// [POST] /api/v1/admin/survey/:surveyId/send
+export const send = async (req, res) => {
+  try {
+    const surveyId = req.params.surveyId;
+    const { customerIds } = req.body;
+
+    if (!Array.isArray(customerIds) || customerIds.length === 0) {
+      return res.status(400).json({
+        message: "Vui lòng chọn ít nhất 1 khách hàng",
+      });
+    }
+
+    const survey = await Survey.findOne({ _id: surveyId }).lean();
+
+    if (!survey) {
+      return res.status(404).json({
+        message: "Khảo sát không tồn tại",
+      });
+    }
+
+    if (survey.status !== "active") {
+      return res.status(409).json({
+        message: "Vui lòng mở khảo sát trước khi gửi",
+      });
+    }
+
+    const ids = [...new Set(customerIds)];
+    const customers = await Customer.find({ _id: { $in: ids } })
+      .populate({
+        path: "userId",
+        match: { deleted: false, status: "active" },
+        select: "_id",
+      })
+      .lean();
+    if (
+      customers.length !== ids.length ||
+      customers.some((customer) => !customer.userId)
+    ) {
+      return res.status(400).json({
+        message: "Danh sách chứa khách hàng không tồn tại, đã xóa hoặc bị khóa",
+      });
+    }
+    // Bổ sung người nhận, không thêm trùng khách hàng đã được gửi.
+    const updatedSurvey = await Survey.findOneAndUpdate(
+      { _id: surveyId, status: "active" },
+      { $addToSet: { recipientIds: { $each: ids } } },
+      { new: true },
+    ).lean();
+    if (!updatedSurvey) {
+      return res.status(409).json({
+        message: "Khảo sát đã đóng, không thể gửi",
+      });
+    }
+
+    res.status(200).json({
+      message: "Đã gửi khảo sát đến các tài khoản được chọn",
+      data: {
+        recipientIds: updatedSurvey.recipientIds,
+        recipientCount: updatedSurvey.recipientIds.length,
+      },
+    });
+  } catch (error) {
+    console.log("Lỗi khi gọi send survey", error);
+    res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
 
 // [GET] /api/v1/admin/survey
 export const list = async (req, res) => {
@@ -50,6 +158,7 @@ export const list = async (req, res) => {
         return {
           ...survey,
           responseCount,
+          recipientCount: survey.recipientIds?.length || 0,
         };
       }),
     );
@@ -61,13 +170,7 @@ export const list = async (req, res) => {
       totalPages: Math.ceil(totalItems / limit),
     });
   } catch (error) {
-    logger.logError("Lỗi khi gọi list survey", error, {
-      adminId: req.user?._id,
-      keyword: req.query.keyword,
-      status: req.query.status,
-      page: req.query.page,
-      endpoint: req.originalUrl,
-    });
+    console.log("Lỗi khi gọi list survey", error);
     res.status(500).json({
       message: "Lỗi hệ thống",
     });
@@ -106,14 +209,11 @@ export const detail = async (req, res) => {
       data: {
         ...survey,
         responseCount,
+        recipientCount: survey.recipientIds?.length || 0,
       },
     });
   } catch (error) {
-    logger.logError("Lỗi khi gọi detail survey", error, {
-      adminId: req.user?._id,
-      surveyId: req.params.surveyId,
-      endpoint: req.originalUrl,
-    });
+    console.log("Lỗi khi gọi detail survey", error);
     res.status(500).json({
       message: "Lỗi hệ thống",
     });
@@ -137,48 +237,43 @@ export const create = async (req, res) => {
       });
     }
 
-    // Validate questions
+    const cleanedQuestions = [];
     for (let i = 0; i < questions.length; i++) {
-      const q = questions[i];
-      if (!q.questionText || !q.questionText.trim()) {
+      const question = questions[i];
+      if (!question?.questionText || !question.questionText.trim()) {
         return res.status(400).json({
           message: `Câu hỏi ${i + 1} không được để trống`,
         });
       }
-      if (!["single_choice", "text"].includes(q.type)) {
+      if (!["single_choice", "text"].includes(question.type)) {
         return res.status(400).json({
           message: `Loại câu hỏi ${i + 1} không hợp lệ`,
         });
       }
-      if (q.type === "single_choice") {
-        if (!q.options || q.options.length < 2) {
-          return res.status(400).json({
-            message: `Câu hỏi trắc nghiệm ${i + 1} phải có ít nhất 2 lựa chọn`,
-          });
-        }
-        // Validate each option is not empty
-        const validOptions = q.options.filter((opt) => opt && opt.trim());
-        if (validOptions.length < 2) {
-          return res.status(400).json({
-            message: `Câu hỏi trắc nghiệm ${i + 1} phải có ít nhất 2 lựa chọn hợp lệ`,
-          });
-        }
+      let options = [];
+      if (
+        question.type === "single_choice" &&
+        Array.isArray(question.options)
+      ) {
+        options = question.options
+          .filter((option) => option && option.trim())
+          .map((option) => option.trim());
       }
+
+      if (question.type === "single_choice" && options.length < 2) {
+        return res.status(400).json({
+          message: `Câu hỏi trắc nghiệm ${i + 1} phải có ít nhất 2 lựa chọn hợp lệ`,
+        });
+      }
+
+      cleanedQuestions.push({
+        questionText: question.questionText.trim(),
+        type: question.type,
+        options,
+      });
     }
 
-    // Clean up questions data
-    const cleanedQuestions = questions.map((q) => ({
-      questionText: q.questionText.trim(),
-      type: q.type,
-      options:
-        q.type === "single_choice"
-          ? q.options
-              .filter((opt) => opt && opt.trim())
-              .map((opt) => opt.trim())
-          : [],
-    }));
-
-    const newSurvey = new Survey({
+    const newSurvey = await Survey.create({
       title: title.trim(),
       description: description?.trim() || "",
       questions: cleanedQuestions,
@@ -186,29 +281,21 @@ export const create = async (req, res) => {
       createdBy: req.staffId,
     });
 
-    await newSurvey.save();
-
-    const populatedSurvey = await Survey.findOne({ _id: newSurvey._id })
-      .populate({
-        path: "createdBy",
-        select: "userId",
-        populate: {
-          path: "userId",
-          select: "displayName email",
-        },
-      })
-      .lean();
+    await newSurvey.populate({
+      path: "createdBy",
+      select: "userId",
+      populate: {
+        path: "userId",
+        select: "displayName email",
+      },
+    });
 
     res.status(201).json({
       message: "Tạo khảo sát thành công",
-      data: populatedSurvey,
+      data: newSurvey,
     });
   } catch (error) {
-    logger.logError("Lỗi khi gọi create survey", error, {
-      adminId: req.user?._id,
-      title: req.body.title,
-      endpoint: req.originalUrl,
-    });
+    console.log("Lỗi khi gọi create survey", error);
     res.status(500).json({
       message: "Lỗi hệ thống",
     });
@@ -229,7 +316,7 @@ export const update = async (req, res) => {
       });
     }
 
-    // Check if survey has responses
+    // Khảo sát đã có phản hồi thì không được chỉnh sửa câu hỏi.
     const responseCount = await SurveyResponse.countDocuments({
       surveyId: survey._id,
     });
@@ -252,56 +339,52 @@ export const update = async (req, res) => {
       });
     }
 
-    // Validate questions
+    const cleanedQuestions = [];
     for (let i = 0; i < questions.length; i++) {
-      const q = questions[i];
-      if (!q.questionText || !q.questionText.trim()) {
+      const question = questions[i];
+      if (!question?.questionText || !question.questionText.trim()) {
         return res.status(400).json({
           message: `Câu hỏi ${i + 1} không được để trống`,
         });
       }
-      if (!["single_choice", "text"].includes(q.type)) {
+      if (!["single_choice", "text"].includes(question.type)) {
         return res.status(400).json({
           message: `Loại câu hỏi ${i + 1} không hợp lệ`,
         });
       }
-      if (q.type === "single_choice") {
-        if (!q.options || q.options.length < 2) {
-          return res.status(400).json({
-            message: `Câu hỏi trắc nghiệm ${i + 1} phải có ít nhất 2 lựa chọn`,
-          });
-        }
-        // Validate each option is not empty
-        const validOptions = q.options.filter((opt) => opt && opt.trim());
-        if (validOptions.length < 2) {
-          return res.status(400).json({
-            message: `Câu hỏi trắc nghiệm ${i + 1} phải có ít nhất 2 lựa chọn hợp lệ`,
-          });
-        }
+      let options = [];
+      if (
+        question.type === "single_choice" &&
+        Array.isArray(question.options)
+      ) {
+        options = question.options
+          .filter((option) => option && option.trim())
+          .map((option) => option.trim());
       }
+
+      if (question.type === "single_choice" && options.length < 2) {
+        return res.status(400).json({
+          message: `Câu hỏi trắc nghiệm ${i + 1} phải có ít nhất 2 lựa chọn hợp lệ`,
+        });
+      }
+
+      cleanedQuestions.push({
+        questionText: question.questionText.trim(),
+        type: question.type,
+        options,
+      });
     }
 
-    // Clean up questions data
-    const cleanedQuestions = questions.map((q) => ({
-      questionText: q.questionText.trim(),
-      type: q.type,
-      options:
-        q.type === "single_choice"
-          ? q.options
-              .filter((opt) => opt && opt.trim())
-              .map((opt) => opt.trim())
-          : [],
-    }));
-
-    // Update survey
-    survey.title = title.trim();
-    survey.description = description?.trim() || "";
-    survey.questions = cleanedQuestions;
-    survey.status = status || survey.status;
-
-    await survey.save();
-
-    const updatedSurvey = await Survey.findOne({ _id: surveyId })
+    const updatedSurvey = await Survey.findOneAndUpdate(
+      { _id: surveyId },
+      {
+        title: title.trim(),
+        description: description?.trim() || "",
+        questions: cleanedQuestions,
+        status: status || survey.status,
+      },
+      { new: true, runValidators: true },
+    )
       .populate({
         path: "createdBy",
         select: "userId",
@@ -317,11 +400,7 @@ export const update = async (req, res) => {
       data: updatedSurvey,
     });
   } catch (error) {
-    logger.logError("Lỗi khi gọi update survey", error, {
-      adminId: req.user?._id,
-      surveyId: req.params.surveyId,
-      endpoint: req.originalUrl,
-    });
+    console.log("Lỗi khi gọi update survey", error);
     res.status(500).json({
       message: "Lỗi hệ thống",
     });
@@ -348,19 +427,13 @@ export const changeStatus = async (req, res) => {
       });
     }
 
-    survey.status = status;
-    await survey.save();
+    await Survey.updateOne({ _id: surveyId }, { status });
 
     res.status(200).json({
       message: `${status === "active" ? "Kích hoạt" : "Vô hiệu hóa"} khảo sát thành công`,
     });
   } catch (error) {
-    logger.logError("Lỗi khi gọi changeStatus survey", error, {
-      adminId: req.user?._id,
-      surveyId: req.params.surveyId,
-      status: req.body.status,
-      endpoint: req.originalUrl,
-    });
+    console.log("Lỗi khi gọi changeStatus survey", error);
     res.status(500).json({
       message: "Lỗi hệ thống",
     });
@@ -406,11 +479,7 @@ export const getResponses = async (req, res) => {
       totalPages: Math.ceil(totalItems / limit),
     });
   } catch (error) {
-    logger.logError("Lỗi khi gọi getResponses survey", error, {
-      adminId: req.user?._id,
-      surveyId: req.params.surveyId,
-      endpoint: req.originalUrl,
-    });
+    console.log("Lỗi khi gọi getResponses survey", error);
     res.status(500).json({
       message: "Lỗi hệ thống",
     });
@@ -434,10 +503,14 @@ export const getStatistics = async (req, res) => {
 
     const totalResponses = responses.length;
 
-    // Đếm tổng số khách hàng trong hệ thống
-    const Customer = (await import("../../../../models/customer.model.js"))
-      .default;
-    const totalCustomers = await Customer.countDocuments();
+    // Mẫu số là nhóm đã được gửi, không phải toàn bộ khách hàng CRM.
+    const totalCustomers = survey.recipientIds?.length || 0;
+    const recipientSet = new Set((survey.recipientIds || []).map(String));
+    const completedRecipients = new Set(
+      responses
+        .filter((response) => recipientSet.has(String(response.customerId)))
+        .map((response) => String(response.customerId)),
+    ).size;
 
     // Thống kê cho từng câu hỏi
     const questionStats = survey.questions.map((question) => {
@@ -505,7 +578,7 @@ export const getStatistics = async (req, res) => {
     // Tính tỷ lệ hoàn thành = (Số người đã làm / Tổng số khách hàng) × 100
     const completionRate =
       totalCustomers > 0
-        ? ((totalResponses / totalCustomers) * 100).toFixed(1)
+        ? ((completedRecipients / totalCustomers) * 100).toFixed(1)
         : "0.0";
 
     res.status(200).json({
@@ -515,16 +588,13 @@ export const getStatistics = async (req, res) => {
         title: survey.title,
         totalResponses,
         totalCustomers,
+        completedRecipients,
         completionRate,
         questionStats,
       },
     });
   } catch (error) {
-    logger.logError("Lỗi khi gọi getStatistics survey", error, {
-      adminId: req.user?._id,
-      surveyId: req.params.surveyId,
-      endpoint: req.originalUrl,
-    });
+    console.log("Lỗi khi gọi getStatistics survey", error);
     res.status(500).json({
       message: "Lỗi hệ thống",
     });

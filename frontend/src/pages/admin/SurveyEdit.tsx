@@ -32,7 +32,6 @@ const SurveyEdit = () => {
     },
   ]);
   const [isLoading, setIsLoading] = useState(true);
-  const [responseCount, setResponseCount] = useState(0);
 
   const canEdit = hasPermission(user, "surveys_edit");
 
@@ -65,7 +64,7 @@ const SurveyEdit = () => {
       }
 
       // Check if survey can be edited
-      if (data.responseCount > 0) {
+      if ((data.responseCount || 0) > 0) {
         toast.error("Khảo sát đã có người trả lời, không thể chỉnh sửa");
         navigate(`/admin/survey/${surveyId}`);
         return;
@@ -74,13 +73,12 @@ const SurveyEdit = () => {
       setTitle(data.title);
       setDescription(data.description || "");
       setStatus(data.status);
-      setResponseCount(data.responseCount);
 
       // Map questions from API to form state
-      const mappedQuestions = data.questions.map((q: any) => ({
+      const mappedQuestions = data.questions.map((q) => ({
         questionText: q.questionText,
         type: q.type,
-        options: q.type === "single_choice" ? q.options : [],
+        options: q.type === "single_choice" ? q.options || [] : [],
       }));
 
       setQuestions(mappedQuestions);
@@ -297,7 +295,7 @@ const SurveyEdit = () => {
                   }
                   className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer bg-white"
                 >
-                  <option value="active">Hoạt động (hiển thị ngay)</option>
+                    <option value="active">Hoạt động (chỉ người được gửi mới thấy)</option>
                   <option value="inactive">Đã đóng (ẩn khảo sát)</option>
                 </select>
               </div>

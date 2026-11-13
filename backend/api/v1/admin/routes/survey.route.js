@@ -9,6 +9,18 @@ router.use(requireAuth);
 
 router.get("/", requirePermission("surveys_view"), controller.list);
 
+router.get(
+  "/recipients",
+  requirePermission("surveys_view"),
+  controller.recipients,
+);
+
+router.post(
+  "/:surveyId/send",
+  requirePermission("surveys_edit"),
+  controller.send,
+);
+
 router.get("/:surveyId", requirePermission("surveys_view"), controller.detail);
 
 router.post("/", requirePermission("surveys_create"), controller.create);
