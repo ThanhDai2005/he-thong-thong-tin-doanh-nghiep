@@ -1,11 +1,8 @@
 import express from "express";
-import * as controller from "../controllers/survey.controller.js";
-import { requireAuth } from "../middlewares/auth.middleware.js";
-import { requirePermission } from "../middlewares/permission.middleware.js";
-
 const router = express.Router();
 
-router.use(requireAuth);
+import * as controller from "../controllers/survey.controller.js";
+import { requirePermission } from "../middlewares/permission.middleware.js";
 
 router.get("/", requirePermission("surveys_view"), controller.list);
 

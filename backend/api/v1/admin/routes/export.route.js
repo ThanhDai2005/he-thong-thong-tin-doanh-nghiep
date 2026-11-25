@@ -3,6 +3,11 @@ import * as controller from "../controllers/export.controller.js";
 
 const router = express.Router();
 
+router.post(
+  "/dashboard/product-statistics",
+  controller.exportDashboardProductStatistics,
+);
+
 // Xuất thống kê dashboard
 router.post(
   "/dashboard/revenue-by-period",

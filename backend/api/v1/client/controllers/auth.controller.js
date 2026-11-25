@@ -34,9 +34,9 @@ export const signUp = async (req, res) => {
       });
     }
 
-    const existPhone = await User.findOne({ phone: phone });
+    const existPhone = await User.findOne({ phone: phone, deleted: false });
     if (existPhone) {
-      return res.status(400).json({
+      return res.status(409).json({
         message: "Số điện thoại đã tồn tại",
       });
     }
@@ -44,7 +44,7 @@ export const signUp = async (req, res) => {
     const existEmail = await User.findOne({ email: email });
 
     if (existEmail) {
-      return res.status(400).json({
+      return res.status(409).json({
         message: "email đã tồn tại",
       });
     }
@@ -98,7 +98,7 @@ export const signIn = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ phone: phone });
+    const user = await User.findOne({ phone: phone, deleted: false });
 
     if (!user) {
       return res.status(401).json({
@@ -111,6 +111,12 @@ export const signIn = async (req, res) => {
     if (!passwordCorrect) {
       return res.status(401).json({
         message: "Số điện thoại hoặc password không chính xác",
+      });
+    }
+
+    if (user.status !== "active") {
+      return res.status(403).json({
+        message: "Tài khoản đã bị vô hiệu hóa",
       });
     }
 
@@ -216,6 +222,28 @@ export const refreshToken = async (req, res) => {
       });
     }
 
+    const user = await User.findOne({
+      _id: session.userId,
+      deleted: false,
+    });
+
+    if (!user) {
+      return res.status(401).json({ message: "Tài khoản không tồn tại" });
+    }
+
+    if (user.status !== "active") {
+      return res.status(403).json({
+        message: "Tài khoản đã bị vô hiệu hóa",
+      });
+    }
+
+    const customer = await Customer.findOne({ userId: user._id });
+    if (!customer) {
+      return res.status(403).json({
+        message: "Tài khoản không phải tài khoản khách hàng",
+      });
+    }
+
     const accessToken = jwt.sign(
       { userId: session.userId },
       process.env.ACCESS_TOKEN_SECRET,
@@ -247,11 +275,17 @@ export const forgotPassword = async (req, res) => {
       });
     }
 
-    const existEmail = await User.findOne({ email: email });
+    const existEmail = await User.findOne({ email: email, deleted: false });
 
     if (!existEmail) {
       return res.status(400).json({
         message: "email không tồn tại",
+      });
+    }
+
+    if (existEmail.status !== "active") {
+      return res.status(403).json({
+        message: "Tài khoản đã bị vô hiệu hóa",
       });
     }
 
@@ -382,10 +416,16 @@ export const resetPassword = async (req, res) => {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     const user = await User.findOneAndUpdate(
-      { email: email },
+      { email: email, deleted: false, status: "active" },
       { hashedPassword: hashedPassword },
       { new: true },
     );
+
+    if (!user) {
+      return res.status(403).json({
+        message: "Tài khoản không tồn tại hoặc đã bị vô hiệu hóa",
+      });
+    }
 
     await Session.deleteMany({ userId: user._id });
 
@@ -453,6 +493,12 @@ export const googleAuth = async (req, res) => {
         address: "",
       });
     } else {
+      if (user.deleted || user.status !== "active") {
+        return res.status(403).json({
+          message: "Tài khoản đã bị xóa hoặc vô hiệu hóa",
+        });
+      }
+
       // User đã tồn tại - kiểm tra có phải Customer không
       const customer = await Customer.findOne({ userId: user._id });
 

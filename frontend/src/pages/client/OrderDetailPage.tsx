@@ -353,7 +353,7 @@ const OrderDetailPage = () => {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => navigate("/orders")}
               className="flex items-center gap-1 text-sm font-bold text-gray-500 hover:text-[#b51c00] transition-colors"
             >
               <span className="material-symbols-outlined text-[18px]">

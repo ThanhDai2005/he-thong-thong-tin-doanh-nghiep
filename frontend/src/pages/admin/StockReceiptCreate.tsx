@@ -115,7 +115,7 @@ const StockReceiptCreate = () => {
               productName: product.name,
               productImage: product.images?.[0] || "",
               currentStock: product.stock,
-              importPrice: item.importPrice || Math.round(product.price * 0.7),
+              importPrice: item.importPrice,
             }
           : item,
       ),

@@ -153,7 +153,7 @@ export const create = async (req, res) => {
       });
     }
 
-    const existedPhone = await User.findOne({ phone: phone });
+    const existedPhone = await User.findOne({ phone: phone, deleted: false });
     if (existedPhone) {
       return res.status(409).json({
         message: "Số điện thoại đã tồn tại",
@@ -261,6 +261,7 @@ export const update = async (req, res) => {
     if (phone) {
       const duplicatePhone = await User.findOne({
         phone: phone,
+        deleted: false,
         _id: { $ne: existedStaff.userId },
       });
       if (duplicatePhone) {

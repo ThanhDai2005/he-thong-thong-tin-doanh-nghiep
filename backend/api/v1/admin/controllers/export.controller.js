@@ -3,7 +3,43 @@ import {
   exportRevenueByStaff,
   exportRevenueByProductQuarter,
   exportRevenueByCustomer,
+  exportProductStatistics,
 } from "../../../../helpers/excelExport.helper.js";
+
+// [POST] /api/v1/admin/export/dashboard/product-statistics
+export const exportDashboardProductStatistics = async (req, res) => {
+  try {
+    const { data, mode, year } = req.body;
+    if (!Array.isArray(data) || data.length === 0) {
+      return res.status(400).json({ message: "Không có dữ liệu để xuất" });
+    }
+    if (!["month", "quarter", "year"].includes(mode)) {
+      return res.status(400).json({ message: "Chế độ thống kê không hợp lệ" });
+    }
+    const selectedYear = parseInt(year) || new Date().getFullYear();
+    const periods =
+      mode === "month"
+        ? Array.from({ length: 12 }, (_, index) => `T${index + 1}`)
+        : mode === "quarter"
+          ? ["Q1", "Q2", "Q3", "Q4"]
+          : [
+              String(selectedYear - 2),
+              String(selectedYear - 1),
+              String(selectedYear),
+            ];
+    const buffer = await exportProductStatistics(data, periods);
+    const filename = `Thong_Ke_San_Pham_${mode}_${selectedYear}.xlsx`;
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(buffer);
+  } catch (error) {
+    console.log("Lỗi khi gọi exportDashboardProductStatistics", error);
+    res.status(500).json({ message: "Lỗi hệ thống khi xuất file Excel" });
+  }
+};
 
 // [POST] /api/v1/admin/export/dashboard/revenue-by-period
 export const exportDashboardRevenueByPeriod = async (req, res) => {

@@ -295,8 +295,8 @@ const SurveyEdit = () => {
                   }
                   className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer bg-white"
                 >
-                    <option value="active">Hoạt động (chỉ người được gửi mới thấy)</option>
-                  <option value="inactive">Đã đóng (ẩn khảo sát)</option>
+                  <option value="active">Hoạt động</option>
+                  <option value="inactive">Đã đóng</option>
                 </select>
               </div>
             </div>

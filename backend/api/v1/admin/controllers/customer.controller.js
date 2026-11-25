@@ -140,7 +140,7 @@ export const create = async (req, res) => {
       });
     }
 
-    const existedPhone = await User.findOne({ phone: phone });
+    const existedPhone = await User.findOne({ phone: phone, deleted: false });
     if (existedPhone) {
       return res.status(409).json({
         message: "Số điện thoại đã tồn tại",
@@ -233,6 +233,7 @@ export const update = async (req, res) => {
     if (phone) {
       const duplicatePhone = await User.findOne({
         phone: phone,
+        deleted: false,
         _id: { $ne: existedCustomer.userId },
       });
       if (duplicatePhone) {
@@ -247,7 +248,7 @@ export const update = async (req, res) => {
       : existedUser.hashedPassword;
 
     await User.findOneAndUpdate(
-      { _id: existedCustomer.userId },
+      { _id: existedCustomer.userId, deleted: false },
       {
         displayName: displayName || existedUser.displayName,
         email: email || existedUser.email,
@@ -322,7 +323,10 @@ export const changeStatus = async (req, res) => {
       });
     }
 
-    await User.updateOne({ _id: existedCustomer.userId }, { status: status });
+    await User.updateOne(
+      { _id: existedCustomer.userId, deleted: false },
+      { status: status },
+    );
 
     res.status(200).json({
       message: "Thay đổi trạng thái khách hàng thành công",
@@ -434,7 +438,7 @@ export const deleteItem = async (req, res) => {
     }
 
     await User.updateOne(
-      { _id: existedCustomer.userId },
+      { _id: existedCustomer.userId, deleted: false },
       {
         deleted: true,
         deletedAt: new Date(),

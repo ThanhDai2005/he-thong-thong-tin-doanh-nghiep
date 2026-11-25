@@ -51,7 +51,7 @@ export const useAdminAuthStore = create<AdminAuthState>()(
         try {
           set({ loading: true });
           const res = await adminAuthService.getDetail();
-          set({ user: res.user });
+          set({ user: { ...res.user, staffId: res.staffId } });
         } catch (error) {
           console.log(error);
         } finally {

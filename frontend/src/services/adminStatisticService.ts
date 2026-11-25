@@ -1,6 +1,13 @@
 import api from "@/lib/adminAxios";
 
 export const adminStatisticService = {
+  getProductStats: async (mode: "month" | "quarter" | "year", year: number) => {
+    const response = await api.get("/admin/statistic/products", {
+      params: { mode, year },
+    });
+    return response.data;
+  },
+
   getStats: async (
     startDate?: string,
     endDate?: string,

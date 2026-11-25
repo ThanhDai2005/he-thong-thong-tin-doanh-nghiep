@@ -49,10 +49,20 @@ const ChatManagement = () => {
 
   const canView = hasPermission(user, "chats_view");
 
+  const selectedChat = conversations.find(
+    (chat) => chat._id === selectedConversationId,
+  );
+
+  // Chỉ cho nhân viên nhắn khi khách đã yêu cầu / đang được tư vấn
+  const canStaffReply =
+    !!selectedChat &&
+    (selectedChat.status === "waiting_human" ||
+      selectedChat.status === "human_active");
+
   // Auto scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isTyping]);
 
   // Socket connection & listeners
   useEffect(() => {
@@ -65,9 +75,12 @@ const ChatManagement = () => {
       loadConversations();
 
       // Listen for new messages
-      on("admin:newMessage", (data: { conversationId: string; message }) => {
-        addMessage(data.conversationId, data.message);
-      });
+      on(
+        "admin:newMessage",
+        (data: { conversationId: string; message: any }) => {
+          addMessage(data.conversationId, data.message);
+        },
+      );
 
       // Listen for new conversations
       on("admin:newConversation", (data: { conversation: any }) => {
@@ -155,16 +168,14 @@ const ChatManagement = () => {
     return name.includes(keyword) || phone.includes(keyword);
   });
 
-  const selectedChat = conversations.find(
-    (chat) => chat._id === selectedConversationId,
-  );
-
   const handleSelectChat = (conversationId: string) => {
     selectConversation(conversationId);
+    setMessageInput("");
   };
 
   const handleSendMessage = () => {
-    if (!messageInput.trim() || !selectedConversationId) return;
+    if (!messageInput.trim() || !selectedConversationId || !canStaffReply)
+      return;
 
     const { emit } = useAdminSocketStore.getState();
     emit("admin:typing", {
@@ -178,27 +189,20 @@ const ChatManagement = () => {
 
   const handleInputChange = (value: string) => {
     setMessageInput(value);
-
-    if (!selectedConversationId) return;
+    if (!selectedConversationId || !canStaffReply) return;
 
     const { emit } = useAdminSocketStore.getState();
-    if (value.trim()) {
-      emit("admin:typing", {
-        conversationId: selectedConversationId,
-        isTyping: true,
-      });
-    } else {
-      emit("admin:typing", {
-        conversationId: selectedConversationId,
-        isTyping: false,
-      });
-    }
+    emit("admin:typing", {
+      conversationId: selectedConversationId,
+      isTyping: !!value.trim(),
+    });
   };
 
   const handleCloseConversation = () => {
     if (!selectedConversationId) return;
 
     closeConversation(selectedConversationId);
+    setMessageInput("");
     toast.success("Đã kết thúc cuộc hội thoại");
   };
 
@@ -206,14 +210,8 @@ const ChatManagement = () => {
     return (
       <NoPermissionScreen
         breadcrumbItems={[
-          {
-            label: "Admin",
-            href: "/admin/dashboard",
-          },
-          {
-            label: "Tư vấn với khách hàng",
-            isCurrentPage: true,
-          },
+          { label: "Admin", href: "/admin/dashboard" },
+          { label: "Tư vấn với khách hàng", isCurrentPage: true },
         ]}
       />
     );
@@ -225,10 +223,7 @@ const ChatManagement = () => {
       <AdminHeader
         items={[
           { label: "Admin", href: "/admin/dashboard" },
-          {
-            label: "Tư vấn với khách hàng",
-            isCurrentPage: true,
-          },
+          { label: "Tư vấn với khách hàng", isCurrentPage: true },
         ]}
       />
 
@@ -269,10 +264,10 @@ const ChatManagement = () => {
                       key={i}
                       className="flex gap-3 p-4 border-b border-gray-50 animate-pulse"
                     >
-                      <div className="w-12 h-12 rounded-full bg-gray-200 shrink-0"></div>
+                      <div className="w-12 h-12 rounded-full bg-gray-200 shrink-0" />
                       <div className="flex-1 space-y-2">
-                        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                        <div className="h-3 bg-gray-200 rounded w-full"></div>
+                        <div className="h-4 bg-gray-200 rounded w-3/4" />
+                        <div className="h-3 bg-gray-200 rounded w-full" />
                       </div>
                     </div>
                   ))}
@@ -343,8 +338,8 @@ const ChatManagement = () => {
             </div>
           </div>
 
-          {/* RIGHT SIDEBAR: ACTIVE CHAT WINDOW */}
-          <div className="flex-1 flex flex-col bg-[#fcfcfc] relative">
+          {/* RIGHT: khung chat */}
+          <div className="flex-1 flex flex-col bg-[#fcfcfc] relative min-w-0">
             {!selectedChat ? (
               // Empty State
               <div className="p-6 border-b border-gray-200 bg-white flex items-center gap-4">
@@ -374,15 +369,21 @@ const ChatManagement = () => {
                           ? "AI đang tự động trả lời"
                           : selectedChat.status === "waiting_human"
                             ? "Chờ nhân viên hỗ trợ"
-                            : "Bạn đang tư vấn"}
+                            : selectedChat.status === "human_active"
+                              ? "Bạn đang tư vấn"
+                              : "Đã kết thúc"}
                       </p>
                     </div>
                   </div>
 
-                  <div>
+                  {(selectedChat.status === "waiting_human" ||
+                    selectedChat.status === "human_active") && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className="p-2 hover:bg-gray-100 rounded-full cursor-pointer">
+                        <button
+                          type="button"
+                          className="p-2 hover:bg-gray-100 rounded-full cursor-pointer"
+                        >
                           <EllipsisVertical className="h-5 w-5 text-gray-500" />
                         </button>
                       </DropdownMenuTrigger>
@@ -396,11 +397,11 @@ const ChatManagement = () => {
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </div>
+                  )}
                 </div>
 
                 {/* Messages Area */}
-                <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
+                <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4 min-h-0">
                   {messageLoading ? (
                     // Spinner for message loading
                     <div className="flex items-center justify-center h-full">
@@ -450,14 +451,15 @@ const ChatManagement = () => {
                               {msg.content}
                             </p>
                             <div
-                              className={`text-[11px] mt-2 text-right ${msg.senderType === "staff" ? "text-white/70" : "text-gray-400"}`}
+                              className={`text-[11px] mt-2 text-right ${
+                                msg.senderType === "staff"
+                                  ? "text-white/70"
+                                  : "text-gray-400"
+                              }`}
                             >
                               {new Date(msg.createdAt).toLocaleTimeString(
                                 "vi-VN",
-                                {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                },
+                                { hour: "2-digit", minute: "2-digit" },
                               )}
                             </div>
                           </div>
@@ -484,15 +486,15 @@ const ChatManagement = () => {
                               <div
                                 className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
                                 style={{ animationDelay: "0ms" }}
-                              ></div>
+                              />
                               <div
                                 className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
                                 style={{ animationDelay: "150ms" }}
-                              ></div>
+                              />
                               <div
                                 className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
                                 style={{ animationDelay: "300ms" }}
-                              ></div>
+                              />
                             </div>
                             <div className="text-[11px] mt-2 text-gray-400">
                               {typingUser === "bot"
@@ -508,34 +510,48 @@ const ChatManagement = () => {
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* Input Area */}
-                <div className="p-4 bg-white border-t border-gray-200 shrink-0">
-                  <div className="relative flex items-center">
-                    <input
-                      type="text"
-                      placeholder="Nhập tin nhắn..."
-                      value={messageInput}
-                      onChange={(e) => handleInputChange(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && messageInput.trim()) {
-                          handleSendMessage();
-                        }
-                      }}
-                      className="w-full pl-4 pr-24 py-3 border border-gray-300 rounded-lg text-[14px] focus:outline-none focus:ring-1 focus:ring-[#b51c00] focus:border-[#b51c00] transition-shadow"
-                    />
-                    <div className="absolute right-2 flex items-center gap-1">
-                      <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-                        <Smile size={20} />
-                      </button>
-                      <button
-                        onClick={handleSendMessage}
-                        className="p-2 text-white bg-[#b51c00] hover:bg-[#8e1400] transition-colors rounded-md"
-                      >
-                        <Send size={18} />
-                      </button>
+                {/* Input: chỉ khi chờ NV hoặc đang tư vấn */}
+                {canStaffReply ? (
+                  <div className="p-4 bg-white border-t border-gray-200 shrink-0">
+                    <div className="relative flex items-center">
+                      <input
+                        type="text"
+                        placeholder="Nhập tin nhắn..."
+                        value={messageInput}
+                        onChange={(e) => handleInputChange(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && messageInput.trim()) {
+                            handleSendMessage();
+                          }
+                        }}
+                        className="w-full pl-4 pr-24 py-3 border border-gray-300 rounded-lg text-[14px] focus:outline-none focus:ring-1 focus:ring-[#b51c00] focus:border-[#b51c00] transition-shadow"
+                      />
+                      <div className="absolute right-2 flex items-center gap-1">
+                        <button
+                          type="button"
+                          className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                          <Smile size={20} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSendMessage}
+                          className="p-2 text-white bg-[#b51c00] hover:bg-[#8e1400] transition-colors rounded-md"
+                        >
+                          <Send size={18} />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="p-4 bg-gray-50 border-t border-gray-200 shrink-0 text-center">
+                    <p className="text-sm text-gray-500">
+                      {selectedChat.status === "bot"
+                        ? "AI đang tự động trả lời. Ô chat sẽ mở khi khách yêu cầu nhân viên tư vấn."
+                        : "Không thể gửi tin nhắn ở trạng thái hiện tại."}
+                    </p>
+                  </div>
+                )}
               </>
             )}
           </div>

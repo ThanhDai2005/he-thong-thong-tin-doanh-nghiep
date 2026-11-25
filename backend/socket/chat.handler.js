@@ -157,12 +157,6 @@ export const handleClientChat = (io, socket) => {
 
         // Stop typing indicator
         socket.emit("client:typing", { isTyping: false, user: null });
-      } else if (
-        conversation.status === "waiting_human" ||
-        conversation.status === "human_active"
-      ) {
-        // STAFF ĐÃ VÀO, CHỜ STAFF TRẢ LỜI (không gọi bot)
-        // Chỉ emit tin nhắn, không bot reply
       }
 
       socket.emit("client:sendMessageResponse", {
@@ -189,6 +183,12 @@ export const handleClientChat = (io, socket) => {
       }
 
       const conversation = await Conversation.findById(conversationId);
+      if (!conversation) {
+        return socket.emit("client:requestHumanResponse", {
+          error: "Conversation không tồn tại",
+        });
+      }
+
       if (conversation.status === "bot") {
         conversation.status = "waiting_human";
         await conversation.save();
@@ -200,6 +200,13 @@ export const handleClientChat = (io, socket) => {
         });
 
         // Bot gửi tin nhắn thông báo
+        io.of("/admin").emit("admin:conversationUpdated", {
+          conversationId: conversation._id,
+          lastMessage: conversation.lastMessage,
+          status: "waiting_human",
+          unreadByAdmin: conversation.unreadByAdmin,
+        });
+
         const botMessage = await Message.create({
           conversationId: conversation._id,
           senderType: "bot",
@@ -225,6 +232,12 @@ export const handleClientChat = (io, socket) => {
           },
         });
 
+        socket.emit("client:conversationStatusChanged", {
+          status: "waiting_human",
+        });
+
+        socket.emit("client:requestHumanResponse", { success: true });
+      } else {
         socket.emit("client:requestHumanResponse", { success: true });
       }
     } catch (error) {
@@ -504,11 +517,20 @@ export const handleAdminChat = (io, socket) => {
       // Join room
       socket.join(`conversation:${conversationId}`);
 
-      // Update status nếu đang waiting
+      // Chỉ chuyển sang human_active khi đang chờ nhân viên
       if (conversation.status === "waiting_human") {
         conversation.status = "human_active";
         conversation.assignedStaffId = staff._id;
         await conversation.save();
+
+        io.of("/admin").emit("admin:conversationStatusChanged", {
+          conversationId: conversation._id,
+          status: "human_active",
+        });
+
+        io.of("/")
+          .to(`conversation:${conversationId}`)
+          .emit("client:conversationStatusChanged", { status: "human_active" });
       }
 
       // Load messages
@@ -560,7 +582,22 @@ export const handleAdminChat = (io, socket) => {
         });
       }
 
-      // Lưu tin nhắn staff
+      // Chặn gửi khi đang bot (chỉ waiting_human / human_active)
+      if (
+        conversation.status !== "waiting_human" &&
+        conversation.status !== "human_active"
+      ) {
+        return socket.emit("admin:sendMessageResponse", {
+          error:
+            "Chỉ được gửi tin khi khách đang chờ hoặc đang được nhân viên hỗ trợ",
+        });
+      }
+
+      if (conversation.status === "waiting_human") {
+        conversation.status = "human_active";
+        conversation.assignedStaffId = staff._id;
+      }
+
       const staffMessage = await Message.create({
         conversationId,
         senderType: "staff",

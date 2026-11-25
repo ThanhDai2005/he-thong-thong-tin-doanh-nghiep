@@ -1,4 +1,5 @@
 import api from "@/lib/adminAxios";
+import type { AdminStatisticState } from "@/types/store";
 
 /**
  * Helper: Trigger download file từ blob response
@@ -15,6 +16,26 @@ const triggerDownload = (blob: Blob, filename: string) => {
 };
 
 export const adminExportService = {
+  exportProductStatistics: async (
+    stats: NonNullable<AdminStatisticState["productStats"]>,
+  ) => {
+    const response = await api.post(
+      "/admin/export/dashboard/product-statistics",
+      { data: stats.products, mode: stats.mode, year: stats.year },
+      { responseType: "blob" },
+    );
+    const modeLabel =
+      stats.mode === "month"
+        ? "Thang"
+        : stats.mode === "quarter"
+          ? "Quy"
+          : "Nam";
+    triggerDownload(
+      new Blob([response.data]),
+      `Thong_Ke_San_Pham_Theo_${modeLabel}_${stats.year}.xlsx`,
+    );
+  },
+
   /**
    * Xuất thống kê Thu/Chi/Lợi nhuận theo Tháng/Quý/Năm (Dashboard - bảng phần b)
    */

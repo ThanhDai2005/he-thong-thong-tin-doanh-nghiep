@@ -13,7 +13,6 @@ export const useAdminChatStore = create<AdminChatState>((set, get) => ({
 
   loadConversations: () => {
     const { emit, on, off } = useAdminSocketStore.getState();
-
     set({ conversationLoading: true });
 
     const handleLoadConversationsResponse = (response: any) => {
@@ -37,7 +36,6 @@ export const useAdminChatStore = create<AdminChatState>((set, get) => ({
 
   selectConversation: (conversationId) => {
     const { emit, on, off } = useAdminSocketStore.getState();
-
     set({ messageLoading: true, selectedConversationId: conversationId });
 
     const handleJoinConversationResponse = (response: any) => {
@@ -53,12 +51,26 @@ export const useAdminChatStore = create<AdminChatState>((set, get) => ({
         messageLoading: false,
       });
 
-      // Reset unreadByAdmin for this conversation
-      set((state) => ({
-        conversations: state.conversations.map((c) =>
-          c._id === conversationId ? { ...c, unreadByAdmin: 0 } : c,
-        ),
-      }));
+      // Đồng bộ status từ server (waiting_human → human_active)
+      if (response.conversation?.status) {
+        set((state) => ({
+          conversations: state.conversations.map((c) =>
+            c._id === conversationId
+              ? {
+                  ...c,
+                  status: response.conversation.status,
+                  unreadByAdmin: 0,
+                }
+              : c,
+          ),
+        }));
+      } else {
+        set((state) => ({
+          conversations: state.conversations.map((c) =>
+            c._id === conversationId ? { ...c, unreadByAdmin: 0 } : c,
+          ),
+        }));
+      }
 
       off("admin:joinConversationResponse", handleJoinConversationResponse);
     };
@@ -70,11 +82,10 @@ export const useAdminChatStore = create<AdminChatState>((set, get) => ({
   sendMessage: (conversationId, message) => {
     const { emit, on, off } = useAdminSocketStore.getState();
 
-    // Add optimistic message immediately
     const optimisticMessage = {
       _id: `temp-${Date.now()}`,
       content: message,
-      senderType: "staff",
+      senderType: "staff" as const,
       createdAt: new Date().toISOString(),
     };
 
@@ -85,7 +96,6 @@ export const useAdminChatStore = create<AdminChatState>((set, get) => ({
     const handleSendMessageResponse = (response: any) => {
       if (response.error) {
         console.error("Lỗi khi gửi tin nhắn:", response.error);
-        // Remove optimistic message on error
         set((state) => ({
           messages: state.messages.filter(
             (m) => m._id !== optimisticMessage._id,
@@ -109,7 +119,6 @@ export const useAdminChatStore = create<AdminChatState>((set, get) => ({
         return;
       }
 
-      // KHÔNG xóa khỏi list — chỉ cập nhật status, giữ nguyên hội thoại + messages đang xem
       set((state) => ({
         conversations: state.conversations.map((c) =>
           c._id === conversationId
@@ -134,7 +143,6 @@ export const useAdminChatStore = create<AdminChatState>((set, get) => ({
       }));
     }
 
-    // Update conversation list
     set((state) => ({
       conversations: state.conversations.map((c) =>
         c._id === conversationId
@@ -146,11 +154,10 @@ export const useAdminChatStore = create<AdminChatState>((set, get) => ({
                 createdAt: message.createdAt,
               },
               lastMessageAt: message.createdAt,
-              // Only increment unreadByAdmin if not currently viewing this conversation
               unreadByAdmin:
                 currentConversationId === conversationId
                   ? 0
-                  : c.unreadByAdmin + 1,
+                  : (c.unreadByAdmin || 0) + 1,
             }
           : c,
       ),

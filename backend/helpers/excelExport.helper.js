@@ -70,6 +70,65 @@ const applySummaryStyle = (row) => {
 /** Format tiền: không dùng ký tự ₫ trong numFmt để tránh ###### */
 const MONEY_FMT = "#,##0";
 
+// Hai sheet dùng cùng thứ tự sản phẩm và kỳ thống kê như bảng trên màn hình.
+export const exportProductStatistics = async (data, periods) => {
+  const workbook = createWorkbook();
+  for (const metric of ["revenue", "quantity"]) {
+    const isRevenue = metric === "revenue";
+    const worksheet = workbook.addWorksheet(
+      isRevenue ? "Doanh thu sản phẩm" : "Số lượng bán",
+      {
+        views: [{ state: "frozen", ySplit: 1, xSplit: 1 }],
+      },
+    );
+    worksheet.columns = [
+      { header: "Sản phẩm", key: "productName", width: 30 },
+      ...periods.map((period) => ({
+        header: `${period}${isRevenue ? " (đ)" : " (sản phẩm)"}`,
+        key: period,
+        width: 18,
+      })),
+      {
+        header: `Tổng cộng${isRevenue ? " (đ)" : " (sản phẩm)"}`,
+        key: "total",
+        width: 22,
+      },
+    ];
+    applyHeaderStyle(worksheet.getRow(1));
+    const totals = {};
+    periods.forEach((period) => {
+      totals[period] = 0;
+    });
+    data.forEach((item, index) => {
+      const values = {};
+      periods.forEach((period) => {
+        values[period] = item.periods?.[period]?.[metric] || 0;
+        totals[period] += values[period];
+      });
+      const row = worksheet.addRow({
+        productName: item.productName,
+        ...values,
+        total: Object.values(values).reduce((sum, value) => sum + value, 0),
+      });
+      applyDataRowStyle(row, index % 2 === 0);
+      [...periods, "total"].forEach((key) => {
+        row.getCell(key).numFmt = MONEY_FMT;
+        row.getCell(key).alignment = { horizontal: "right" };
+      });
+    });
+    const summary = worksheet.addRow({
+      productName: "TỔNG TOP 5",
+      ...totals,
+      total: Object.values(totals).reduce((sum, value) => sum + value, 0),
+    });
+    applySummaryStyle(summary);
+    [...periods, "total"].forEach((key) => {
+      summary.getCell(key).numFmt = MONEY_FMT;
+    });
+  }
+  return workbook.xlsx.writeBuffer();
+};
+
 /** Set width cột tiền đủ rộng (tránh ###### tới hàng trăm triệu) */
 const setMoneyColumnWidth = (column, minWidth = 16) => {
   column.width = Math.max(column.width || 0, minWidth);

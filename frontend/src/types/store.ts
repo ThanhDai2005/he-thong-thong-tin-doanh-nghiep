@@ -781,18 +781,21 @@ export interface AdminChatState {
   messages: Message[];
   conversationLoading: boolean;
   messageLoading: boolean;
+  sendingConversationId: string | null;
+  closingConversationId: string | null;
   isTyping: boolean;
   typingUser: "client" | "bot" | null;
 
   loadConversations: () => void;
   selectConversation: (conversationId: string) => void;
-  sendMessage: (conversationId: string, message: string) => void;
-  closeConversation: (conversationId: string) => void;
+  sendMessage: (conversationId: string, message: string) => Promise<boolean>;
+  closeConversation: (conversationId: string) => Promise<boolean>;
   addMessage: (conversationId: string, message: Message) => void;
   addNewConversation: (conversation: Conversation) => void;
   updateConversationStatus: (
     conversationId: string,
     status: "bot" | "waiting_human" | "human_active" | "closed",
+    assignedStaffId?: string | null,
   ) => void;
   updateConversationPreview: (
     conversationId: string,
@@ -804,6 +807,7 @@ export interface AdminChatState {
     } | null,
     status: "bot" | "waiting_human" | "human_active" | "closed",
     unreadByAdmin: number,
+    assignedStaffId?: string | null,
   ) => void;
   setTyping: (isTyping: boolean, user: "client" | "bot" | null) => void;
 }
@@ -897,7 +901,11 @@ export interface AdminSurveyState {
   recipientsTotalPages: number;
   recipientsLoading: boolean;
   sending: boolean;
-  fetchRecipients: (keyword?: string, page?: number, limit?: number) => Promise<void>;
+  fetchRecipients: (
+    keyword?: string,
+    page?: number,
+    limit?: number,
+  ) => Promise<void>;
   sendSurvey: (surveyId: string, customerIds: string[]) => Promise<void>;
 
   fetchSurveys: (
@@ -917,12 +925,19 @@ export interface AdminSurveyState {
     }>;
     status?: "active" | "inactive";
   }) => Promise<Survey>;
-  updateSurvey: (surveyId: string, data: {
-    title: string;
-    description?: string;
-    questions: Array<{ questionText: string; type: "single_choice" | "text"; options?: string[] }>;
-    status?: "active" | "inactive";
-  }) => Promise<void>;
+  updateSurvey: (
+    surveyId: string,
+    data: {
+      title: string;
+      description?: string;
+      questions: Array<{
+        questionText: string;
+        type: "single_choice" | "text";
+        options?: string[];
+      }>;
+      status?: "active" | "inactive";
+    },
+  ) => Promise<void>;
   changeStatus: (
     surveyId: string,
     status: "active" | "inactive",
@@ -988,6 +1003,24 @@ export interface AdminReviewStore {
 }
 
 export interface AdminStatisticState {
+  productStats: {
+    mode: "month" | "quarter" | "year";
+    year: number;
+    periods: string[];
+    availableYears: number[];
+    products: Array<{
+      productId: string;
+      productName: string;
+      periods: Record<string, { quantity: number; revenue: number }>;
+      totalQuantity: number;
+      totalRevenue: number;
+    }>;
+  } | null;
+  productsLoading: boolean;
+  fetchProductStats: (
+    mode: "month" | "quarter" | "year",
+    year: number,
+  ) => Promise<void>;
   stats: {
     revenueByMonth?: Array<{
       month: string;

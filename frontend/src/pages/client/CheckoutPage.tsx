@@ -15,7 +15,7 @@ const checkoutSchema = z.object({
     .string()
     .regex(/^(03|05|07|08|09)\d{8}$/, "Số điện thoại không hợp lệ"),
   address: z.string().min(10, "Địa chỉ phải có ít nhất 10 ký tự"),
-  paymentMethod: z.enum(["COD", "VNPAY", "MOMO", "STRIPE"]),
+  paymentMethod: z.enum(["COD", "VNPAY", "MOMO"]),
 });
 
 type CheckoutForm = z.infer<typeof checkoutSchema>;
@@ -152,7 +152,7 @@ const CheckoutPage = () => {
         return;
       }
 
-      // Handle other payment methods (COD, STRIPE)
+      // Handle other payment methods (COD)
       clearCart();
       clearPromotion();
       toast.success("Đặt hàng thành công!");
